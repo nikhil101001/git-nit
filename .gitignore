@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+src-tauri/target/
+
+# Tauri build-generated capability schemas (regenerated on every build)
+src-tauri/gen/
+
+# ts-rs generated bindings (regenerated via `pnpm gen:bindings`)
+src/lib/bindings/*.ts
+
+# misc
+.DS_Store
+*.log
+.vite/
