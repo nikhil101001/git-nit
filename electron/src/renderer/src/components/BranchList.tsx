@@ -1,6 +1,6 @@
-// Left sidebar: the Working Directory node (selects the staging view) plus local
-// and remote branches with create / checkout / rename / delete actions. Mirrors
-// the Tauri build's `BranchList.svelte`, extended with M1 branch operations.
+// Left sidebar: the Working Directory node plus local/remote branches with
+// create/checkout/rename/delete, M2 ahead/behind chips, and drag-and-drop:
+// drop branch A onto branch B → Merge A into B / Rebase B onto A.
 
 import { useMemo, useState } from 'react'
 
@@ -8,6 +8,13 @@ import { useRepo } from '../store'
 import { useStatus } from '../status-store'
 import { useGraph } from '../graph-store'
 import * as actions from '../actions'
+
+interface Drop {
+  src: string
+  target: string
+  x: number
+  y: number
+}
 
 export default function BranchList(): React.JSX.Element {
   const branches = useRepo((s) => s.branches)
@@ -25,6 +32,7 @@ export default function BranchList(): React.JSX.Element {
   const [newName, setNewName] = useState('')
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [drop, setDrop] = useState<Drop | null>(null)
 
   const submitCreate = (): void => {
     const name = newName.trim()
@@ -88,7 +96,20 @@ export default function BranchList(): React.JSX.Element {
               />
             </li>
           ) : (
-            <li key={b.fullName} className={`branch${b.isHead ? ' head' : ''}`}>
+            <li
+              key={b.fullName}
+              className={`branch${b.isHead ? ' head' : ''}`}
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData('text/branch', b.name)}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes('text/branch')) e.preventDefault()
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                const src = e.dataTransfer.getData('text/branch')
+                if (src && src !== b.name) setDrop({ src, target: b.name, x: e.clientX, y: e.clientY })
+              }}
+            >
               <button
                 className="branch-main"
                 title={b.isHead ? 'current branch' : 'checkout'}
@@ -97,6 +118,12 @@ export default function BranchList(): React.JSX.Element {
               >
                 {b.name}
               </button>
+              {(b.ahead > 0 || b.behind > 0) && (
+                <span className="ab-chip" title={`${b.ahead} ahead, ${b.behind} behind ${b.upstream ?? ''}`}>
+                  {b.ahead > 0 && <span className="ahead">↑{b.ahead}</span>}
+                  {b.behind > 0 && <span className="behind">↓{b.behind}</span>}
+                </span>
+              )}
               <span className="branch-actions">
                 <button
                   className="mini"
@@ -135,6 +162,33 @@ export default function BranchList(): React.JSX.Element {
             ))}
           </ul>
         </>
+      )}
+
+      {drop && (
+        <div className="drop-overlay" onMouseDown={() => setDrop(null)}>
+          <ul
+            className="drop-menu"
+            style={{ top: drop.y, left: drop.x }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <li
+              onClick={() => {
+                void actions.mergeBranchInto(drop.src, drop.target)
+                setDrop(null)
+              }}
+            >
+              Merge {drop.src} → {drop.target}
+            </li>
+            <li
+              onClick={() => {
+                void actions.rebaseBranchOnto(drop.target, drop.src)
+                setDrop(null)
+              }}
+            >
+              Rebase {drop.target} onto {drop.src}
+            </li>
+          </ul>
+        </div>
       )}
     </aside>
   )

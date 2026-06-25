@@ -7,10 +7,17 @@ import * as actions from './actions'
 import RepoPicker from './components/RepoPicker'
 import Toolbar from './components/Toolbar'
 import HeadBar from './components/HeadBar'
+import OpBanner from './components/OpBanner'
 import BranchList from './components/BranchList'
 import GraphCanvas from './components/GraphCanvas'
 import CommitDetail from './components/CommitDetail'
 import WorkingArea from './components/WorkingArea'
+import ConflictEditor from './components/ConflictEditor'
+import RebaseUI from './components/RebaseUI'
+import StashPanel from './components/StashPanel'
+import TagDialog from './components/TagDialog'
+import AuthDialog from './components/AuthDialog'
+import CommitContextMenu from './components/CommitContextMenu'
 
 export default function App(): React.JSX.Element {
   const repo = useRepo((s) => s.repo)
@@ -35,6 +42,7 @@ export default function App(): React.JSX.Element {
       {repo ? (
         <>
           <HeadBar />
+          <OpBanner />
           <div className="panes">
             <BranchList />
             <GraphCanvas />
@@ -48,6 +56,14 @@ export default function App(): React.JSX.Element {
           {loading ? 'Opening…' : 'Open a Git repository to get started.'}
         </div>
       )}
+
+      {/* M2 overlays — each renders null unless active */}
+      <ConflictEditor />
+      <RebaseUI />
+      <StashPanel />
+      <TagDialog />
+      <AuthDialog />
+      <CommitContextMenu />
     </main>
   )
 }

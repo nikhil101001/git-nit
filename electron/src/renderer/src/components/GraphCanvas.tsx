@@ -8,6 +8,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import type { RefBadge } from '../../../shared/types'
 import { useGraph } from '../graph-store'
+import { useUi } from '../ui-store'
 import { relTime } from '../time'
 
 const ROW_H = 28
@@ -162,6 +163,15 @@ export default function GraphCanvas(): React.JSX.Element {
                 className={`graph-row${r.oid === selectedOid ? ' selected' : ''}`}
                 style={{ top: i * ROW_H, height: ROW_H, paddingLeft: gutterW }}
                 onClick={() => select(r.oid)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  useUi.getState().openContext({
+                    oid: r.oid,
+                    shortOid: r.shortOid,
+                    x: e.clientX,
+                    y: e.clientY
+                  })
+                }}
               >
                 {r.refs.map((b) => (
                   <span key={b.kind + b.name} className={badgeClass(b.kind)}>
