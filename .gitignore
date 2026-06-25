@@ -11,3 +11,6 @@
 
 # Claude Code local settings (keep shared settings.json, ignore the local override)
 .claude/settings.local.json
+
+
+thoughts/
