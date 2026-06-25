@@ -6,11 +6,28 @@
 // off so the bundled CJS preload loads cleanly; it can be tightened later since
 // the preload only touches ipcRenderer/contextBridge.)
 
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, session, shell } from 'electron'
 import { join } from 'node:path'
 
 import { registerIpc } from './ipc'
 import { state } from './state'
+
+// In production (file:// load) lock the renderer down with a strict CSP: only
+// our own bundled scripts, no remote content, no eval. (Skipped in dev, where
+// the Vite dev server injects its own inline scripts / HMR websocket.)
+function applyProdCsp(): void {
+  if (process.env['ELECTRON_RENDERER_URL']) return
+  session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
+    cb({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'"
+        ]
+      }
+    })
+  })
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -48,6 +65,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  applyProdCsp()
   registerIpc()
   createWindow()
 
