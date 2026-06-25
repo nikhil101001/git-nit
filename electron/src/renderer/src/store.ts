@@ -1,45 +1,29 @@
-// Zustand store holding the open repository's state (SPEC §3.2 names Zustand for
-// renderer state). Mirrors the Tauri build's runes store in `repo.svelte.ts`:
-// open a repo, then fetch head/branches/commits together; the filesystem watcher
-// drives `refreshAll`.
+// Repo store: the open repository plus HEAD and branch refs. The commit list is
+// now owned by the graph store and the working tree by the status store; this
+// store keeps the repo identity, HEAD bar, and branch sidebar. Mirrors the Tauri
+// build's `repo.svelte.ts` (minus the commit list, promoted to the graph).
 
 import { create } from 'zustand'
 
-import type {
-  BranchInfo,
-  CommitSummary,
-  ErrorPayload,
-  HeadInfo,
-  RepoInfo
-} from '../../shared/types'
+import type { BranchInfo, HeadInfo, RepoInfo } from '../../shared/types'
 import * as ipc from './ipc'
+import { errMessage } from './errors'
 
 interface RepoState {
   repo: RepoInfo | null
   head: HeadInfo | null
   branches: BranchInfo[]
-  commits: CommitSummary[]
   loading: boolean
   error: string | null
 
   openRepo: (path: string) => Promise<void>
-  pickAndOpen: () => Promise<void>
-  refreshAll: () => Promise<void>
-}
-
-// IPC rejections arrive as the serialized ErrorPayload { kind, message }.
-function errMessage(e: unknown): string {
-  if (e && typeof e === 'object' && 'message' in e) {
-    return String((e as ErrorPayload).message)
-  }
-  return String(e)
+  refreshHead: () => Promise<void>
 }
 
 export const useRepo = create<RepoState>((set, get) => ({
   repo: null,
   head: null,
   branches: [],
-  commits: [],
   loading: false,
   error: null,
 
@@ -48,7 +32,7 @@ export const useRepo = create<RepoState>((set, get) => ({
     try {
       const repo = await ipc.openRepo(path)
       set({ repo })
-      await get().refreshAll()
+      await get().refreshHead()
     } catch (e) {
       set({ error: errMessage(e) })
     } finally {
@@ -56,20 +40,10 @@ export const useRepo = create<RepoState>((set, get) => ({
     }
   },
 
-  async pickAndOpen() {
-    const path = await ipc.pickDirectory()
-    if (path) await get().openRepo(path)
-  },
-
-  async refreshAll() {
-    if (!get().repo) return
+  async refreshHead() {
     try {
-      const [head, branches, page] = await Promise.all([
-        ipc.getHead(),
-        ipc.listBranches(),
-        ipc.listCommits(undefined, 200)
-      ])
-      set({ head, branches, commits: page.commits, error: null })
+      const [head, branches] = await Promise.all([ipc.getHead(), ipc.listBranches()])
+      set({ head, branches, error: null })
     } catch (e) {
       set({ error: errMessage(e) })
     }
