@@ -35,6 +35,11 @@ export interface BranchInfo {
   isHead: boolean
   /** Tip commit oid (hex); null if the ref cannot be resolved. */
   target: string | null
+  /** Upstream short name (e.g. "origin/main"); null if untracked. (M2) */
+  upstream: string | null
+  /** Commits ahead of / behind upstream; 0 with no upstream. (M2) */
+  ahead: number
+  behind: number
 }
 
 export interface CommitSummary {
@@ -240,4 +245,127 @@ export interface GitApi {
   pull(): Promise<void>
   push(force: boolean): Promise<void>
   onSyncProgress(cb: (p: SyncProgress) => void): () => void
+
+  // M2 — merge / rebase / cherry-pick / revert / reset
+  merge(ref: string, noFf: boolean): Promise<void>
+  rebase(onto: string): Promise<void>
+  cherryPick(oids: string[]): Promise<void>
+  revert(oid: string): Promise<void>
+  reset(oid: string, mode: ResetMode): Promise<void>
+  opStatus(): Promise<OpStatus>
+  opContinue(): Promise<void>
+  opAbort(): Promise<void>
+  opSkip(): Promise<void>
+
+  // M2 — conflicts
+  conflict(path: string): Promise<ConflictFile>
+  resolveConflict(path: string, content: string): Promise<void>
+
+  // M2 — interactive rebase
+  rebasePlan(onto: string): Promise<RebasePlan>
+  rebaseInteractive(plan: RebasePlan): Promise<void>
+
+  // M2 — undo / redo
+  undo(): Promise<void>
+  redo(): Promise<void>
+  undoState(): Promise<UndoState>
+
+  // M2 — stash
+  stashPush(message: string | undefined, includeUntracked: boolean): Promise<void>
+  stashList(): Promise<StashEntry[]>
+  stashApply(index: number, pop: boolean): Promise<void>
+  stashDrop(index: number): Promise<void>
+
+  // M2 — tags
+  tagCreate(input: TagInput): Promise<void>
+  tagDelete(name: string): Promise<void>
+  /** Push one tag, or all tags when name is null. */
+  tagPush(name: string | null): Promise<void>
+
+  // M2 — auth (the token itself never crosses the bridge)
+  authInfo(): Promise<AuthInfo[]>
+  setToken(host: string, token: string): Promise<void>
+  clearToken(host: string): Promise<void>
+
+  // M2 — long-op progress (rebase steps, etc.)
+  onOpProgress(cb: (p: OpProgress) => void): () => void
+}
+
+// ───────────────────────────── M2 additions ─────────────────────────────
+// Mirror the (future) Tauri M2 DTOs; camelCase on the wire.
+
+/** A file in conflict; each side's full content (null = absent on that side). */
+export interface ConflictFile {
+  path: string
+  base: string | null
+  ours: string | null
+  theirs: string | null
+  /** The working-tree file with conflict markers, as the merge left it. */
+  merged: string
+}
+
+/** Which multi-step operation (if any) is mid-flight — drives the banner + resume. */
+export interface OpStatus {
+  kind: 'none' | 'merge' | 'rebase' | 'cherryPick' | 'revert'
+  /** Conflicted paths that must be resolved before continue. */
+  conflicts: string[]
+  canContinue: boolean
+  canAbort: boolean
+  canSkip: boolean
+  /** Rebase progress like "3/12", else null. */
+  progress: string | null
+}
+
+export type RebaseAction = 'pick' | 'reword' | 'edit' | 'squash' | 'fixup' | 'drop'
+
+export interface RebaseStep {
+  action: RebaseAction
+  oid: string
+  shortOid: string
+  summary: string
+  /** New message for a `reword` step (consumed in todo order). */
+  message?: string
+}
+
+export interface RebasePlan {
+  /** Commit/ref to rebase onto. */
+  onto: string
+  /** Steps oldest→newest, as the rebase todo expects. */
+  steps: RebaseStep[]
+}
+
+export interface StashEntry {
+  /** Index in `git stash list` (stash@{index}). */
+  index: number
+  message: string
+  branch: string
+  oid: string
+}
+
+export interface TagInput {
+  name: string
+  /** Annotated when a message is given, else lightweight. */
+  message?: string
+  /** Target commit-ish; defaults to HEAD. */
+  target?: string
+}
+
+export type ResetMode = 'soft' | 'mixed' | 'hard'
+
+/** Labels of the next undo/redo (null when the stack end is reached). */
+export interface UndoState {
+  undo: string | null
+  redo: string | null
+}
+
+/** Whether a host has a stored token; the token never crosses the wire. */
+export interface AuthInfo {
+  host: string
+  hasToken: boolean
+}
+
+/** One streamed line of a long operation (interactive rebase, etc.). */
+export interface OpProgress {
+  raw: string
+  done: boolean
 }
