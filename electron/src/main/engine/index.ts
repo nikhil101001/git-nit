@@ -12,7 +12,18 @@
 // run off the main thread too). Keeping the surface async now means the engine
 // swap is invisible to callers.
 
-import type { BranchInfo, CommitPage, HeadInfo, RepoInfo } from '../../shared/types'
+import type {
+  BranchInfo,
+  CommitInput,
+  CommitPage,
+  FileDiff,
+  GraphFilters,
+  GraphPage,
+  HeadInfo,
+  RepoInfo,
+  StageSelection,
+  WorkingStatus
+} from '../../shared/types'
 
 export interface GitEngine {
   repoInfo(): Promise<RepoInfo>
@@ -24,6 +35,36 @@ export interface GitEngine {
    * `limit` caps the rows returned; the page carries a cursor to continue.
    */
   listCommits(start: string | undefined, limit: number): Promise<CommitPage>
+
+  // ── M1 — commit graph ──
+  /**
+   * Like `listCommits`, but each row carries lane/color/edge layout + ref
+   * badges for the graph. `start`/`limit` paginate as in M0; `filters` scope
+   * the walk (remotes, current-branch-only, query). Lane assignment is the one
+   * read NodeGit may later accelerate behind this same method (perf spike).
+   */
+  graphPage(
+    start: string | undefined,
+    limit: number,
+    filters: GraphFilters
+  ): Promise<GraphPage>
+
+  // ── M1 — working directory ──
+  workingStatus(): Promise<WorkingStatus>
+  /** Structured diff for `path`: staged (index↔HEAD) when `staged`, else workdir↔index. */
+  fileDiff(path: string, staged: boolean): Promise<FileDiff>
+  stage(sel: StageSelection): Promise<void>
+  unstage(sel: StageSelection): Promise<void>
+  discard(sel: StageSelection): Promise<void>
+
+  // ── M1 — commit ──
+  commit(input: CommitInput): Promise<void>
+
+  // ── M1 — branching ──
+  createBranch(name: string, startPoint?: string): Promise<void>
+  checkoutBranch(name: string): Promise<void>
+  renameBranch(oldName: string, newName: string): Promise<void>
+  deleteBranch(name: string, force: boolean): Promise<void>
 
   /** Absolute working-directory path; null if bare. */
   workdir(): string | null

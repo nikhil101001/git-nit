@@ -8,6 +8,8 @@ export type ErrorKind =
   | 'noRepoOpen'
   | 'invalidPath'
   | 'git'
+  | 'gitNotFound'
+  | 'identityUnset'
   | 'io'
   | 'watch'
   | 'internal'
