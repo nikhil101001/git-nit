@@ -28,10 +28,15 @@ export function runSync(
   cwd: string,
   op: SyncOp,
   force: boolean,
-  onProgress: (p: SyncProgress) => void
+  onProgress: (p: SyncProgress) => void,
+  extraEnv: Record<string, string> = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const cp = spawn('git', ARGS[op](force), { cwd, windowsHide: true })
+    const cp = spawn('git', ARGS[op](force), {
+      cwd,
+      windowsHide: true,
+      env: { ...process.env, ...extraEnv }
+    })
     let errTail = ''
 
     cp.on('error', (e: NodeJS.ErrnoException) => {
