@@ -11,7 +11,7 @@ toolchain, dependencies, and build:
 | Directory | Stack | Status |
 |---|---|---|
 | [`tauri/`](tauri/) | **Tauri v2** (Rust + OS webview) + Svelte 5 | M0 skeleton — boots, opens a repo, lists branches/commits, FS-watch refresh |
-| [`electron/`](electron/) | **Electron** (Node) | Spec only — implementation not started |
+| [`electron/`](electron/) | **Electron** (Node) + React 19 | M0 skeleton — boots, opens a repo, lists branches/commits, FS-watch refresh |
 
 Each app documents its own setup and stack in its own `README.md` / `SPEC.md`:
 
