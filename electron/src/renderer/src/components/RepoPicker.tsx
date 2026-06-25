@@ -1,9 +1,8 @@
-import { useRepo } from '../store'
+import * as actions from '../actions'
 
 export default function RepoPicker(): React.JSX.Element {
-  const pickAndOpen = useRepo((s) => s.pickAndOpen)
   return (
-    <button className="repo-picker" onClick={() => void pickAndOpen()}>
+    <button className="repo-picker" onClick={() => void actions.pickAndOpen()}>
       Open repo…
     </button>
   )
