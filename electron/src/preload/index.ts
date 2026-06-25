@@ -10,19 +10,28 @@
 
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  AuthInfo,
   BranchInfo,
   CommitInput,
   CommitPage,
+  ConflictFile,
   FileDiff,
   GitApi,
   GraphFilters,
   GraphPage,
   HeadInfo,
   IpcResult,
+  OpProgress,
+  OpStatus,
+  RebasePlan,
   RefreshEvent,
   RepoInfo,
+  ResetMode,
   StageSelection,
+  StashEntry,
   SyncProgress,
+  TagInput,
+  UndoState,
   WorkingStatus
 } from '../shared/types'
 
@@ -75,7 +84,51 @@ const api: GitApi = {
   fetch: () => invoke<void>('repo:fetch'),
   pull: () => invoke<void>('repo:pull'),
   push: (force) => invoke<void>('repo:push', force),
-  onSyncProgress: (cb: (p: SyncProgress) => void) => subscribe('repo://sync-progress', cb)
+  onSyncProgress: (cb: (p: SyncProgress) => void) => subscribe('repo://sync-progress', cb),
+
+  // M2 — merge / rebase / cherry-pick / revert / reset
+  merge: (ref, noFf) => invoke<void>('repo:merge', ref, noFf),
+  rebase: (onto) => invoke<void>('repo:rebase', onto),
+  cherryPick: (oids) => invoke<void>('repo:cherryPick', oids),
+  revert: (oid) => invoke<void>('repo:revert', oid),
+  reset: (oid, mode: ResetMode) => invoke<void>('repo:reset', oid, mode),
+  opStatus: () => invoke<OpStatus>('repo:opStatus'),
+  opContinue: () => invoke<void>('repo:opContinue'),
+  opAbort: () => invoke<void>('repo:opAbort'),
+  opSkip: () => invoke<void>('repo:opSkip'),
+
+  // M2 — conflicts
+  conflict: (path) => invoke<ConflictFile>('repo:conflict', path),
+  resolveConflict: (path, content) => invoke<void>('repo:resolveConflict', path, content),
+
+  // M2 — interactive rebase
+  rebasePlan: (onto) => invoke<RebasePlan>('repo:rebasePlan', onto),
+  rebaseInteractive: (plan: RebasePlan) => invoke<void>('repo:rebaseInteractive', plan),
+
+  // M2 — undo / redo
+  undo: () => invoke<void>('repo:undo'),
+  redo: () => invoke<void>('repo:redo'),
+  undoState: () => invoke<UndoState>('repo:undoState'),
+
+  // M2 — stash
+  stashPush: (message, includeUntracked) =>
+    invoke<void>('repo:stashPush', message, includeUntracked),
+  stashList: () => invoke<StashEntry[]>('repo:stashList'),
+  stashApply: (index, pop) => invoke<void>('repo:stashApply', index, pop),
+  stashDrop: (index) => invoke<void>('repo:stashDrop', index),
+
+  // M2 — tags
+  tagCreate: (input: TagInput) => invoke<void>('repo:tagCreate', input),
+  tagDelete: (name) => invoke<void>('repo:tagDelete', name),
+  tagPush: (name) => invoke<void>('repo:tagPush', name),
+
+  // M2 — auth
+  authInfo: () => invoke<AuthInfo[]>('repo:authInfo'),
+  setToken: (host, token) => invoke<void>('repo:setToken', host, token),
+  clearToken: (host) => invoke<void>('repo:clearToken', host),
+
+  // M2 — long-op progress
+  onOpProgress: (cb: (p: OpProgress) => void) => subscribe('repo://op-progress', cb)
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -12,12 +12,20 @@ import {
 } from 'electron'
 import { realpathSync } from 'node:fs'
 
-import type { GraphFilters, IpcResult, StageSelection } from '../shared/types'
+import type {
+  GraphFilters,
+  IpcResult,
+  RebasePlan,
+  ResetMode,
+  StageSelection,
+  TagInput
+} from '../shared/types'
 import { AppError } from './errors'
 import { CliEngine, type GitEngine } from './engine'
 import { state } from './state'
 import { startWatcher } from './watcher'
 import { runSync, type SyncOp } from './sync'
+import * as auth from './auth'
 
 function requireString(v: unknown, field: string): string {
   if (typeof v !== 'string' || v === '') {
@@ -93,6 +101,7 @@ export function registerIpc(): void {
       state.watcher = null
     }
     state.engine = engine
+    state.undo.clear() // undo history is per-repo
 
     // Watch the working tree (incl. .git refs) for both file edits and git ops.
     state.watcher = startWatcher(
@@ -128,13 +137,18 @@ export function registerIpc(): void {
   handle('repo:unstage', async (_e, sel) => requireEngine().unstage(asSelection(sel)))
   handle('repo:discard', async (_e, sel) => requireEngine().discard(asSelection(sel)))
 
-  // ── M1: commit ──
+  // ── M1: commit (undo-recorded) ──
   handle('repo:commit', async (_e, input) => {
     const i = (input ?? {}) as { message?: unknown; amend?: unknown }
     if (typeof i.message !== 'string' || i.message.trim() === '') {
       throw new AppError('git', 'commit message is required')
     }
-    return requireEngine().commit({ message: i.message, amend: i.amend === true })
+    const engine = requireEngine()
+    const amend = i.amend === true
+    const message = i.message
+    await state.undo.record(engine, amend ? 'Amend' : 'Commit', () =>
+      engine.commit({ message, amend })
+    )
   })
 
   // ── M1: branching ──
@@ -154,19 +168,139 @@ export function registerIpc(): void {
     requireEngine().deleteBranch(requireString(name, 'name'), force === true)
   )
 
-  // ── M1: remotes & sync (streams repo://sync-progress) ──
+  // ── M1: remotes & sync (streams repo://sync-progress; M2 attaches auth) ──
   const sync = (op: SyncOp): void => {
     handle(`repo:${op}`, async (e, force) => {
       const engine = requireEngine()
       const cwd = engine.workdir() ?? engine.gitDir()
-      await runSync(cwd, op, force === true, (p) => {
-        if (!e.sender.isDestroyed()) e.sender.send('repo://sync-progress', p)
-      })
+      // Attach a stored HTTPS token (if any) for the origin host; SSH/credential
+      // helpers handle the rest.
+      const url = await engine.originUrl()
+      const host = url ? auth.httpsHost(url) : null
+      const env = host ? auth.askpassEnv(host) ?? {} : {}
+      await runSync(
+        cwd,
+        op,
+        force === true,
+        (p) => {
+          if (!e.sender.isDestroyed()) e.sender.send('repo://sync-progress', p)
+        },
+        env
+      )
     })
   }
   sync('fetch')
   sync('pull')
   sync('push')
+
+  // ── M2: merge / rebase / cherry-pick / revert / reset (undo-recorded) ──
+  const record = (engine: GitEngine, label: string, fn: () => Promise<void>): Promise<void> =>
+    state.undo.record(engine, label, fn)
+
+  handle('repo:merge', async (_e, ref, noFf) =>
+    record(requireEngine(), `Merge ${requireString(ref, 'ref')}`, () =>
+      requireEngine().merge(requireString(ref, 'ref'), noFf === true)
+    )
+  )
+  handle('repo:rebase', async (_e, onto) =>
+    record(requireEngine(), `Rebase onto ${requireString(onto, 'onto')}`, () =>
+      requireEngine().rebase(requireString(onto, 'onto'))
+    )
+  )
+  handle('repo:cherryPick', async (_e, oids) => {
+    const list = Array.isArray(oids) ? oids.filter((o): o is string => typeof o === 'string') : []
+    return record(requireEngine(), 'Cherry-pick', () => requireEngine().cherryPick(list))
+  })
+  handle('repo:revert', async (_e, oid) =>
+    record(requireEngine(), 'Revert', () => requireEngine().revert(requireString(oid, 'oid')))
+  )
+  handle('repo:reset', async (_e, oid, mode) => {
+    const m = (['soft', 'mixed', 'hard'] as ResetMode[]).includes(mode as ResetMode)
+      ? (mode as ResetMode)
+      : 'mixed'
+    return record(requireEngine(), `Reset (${m})`, () =>
+      requireEngine().reset(requireString(oid, 'oid'), m)
+    )
+  })
+  handle('repo:opStatus', async () => requireEngine().opStatus())
+  handle('repo:opContinue', async () =>
+    record(requireEngine(), 'Continue', () => requireEngine().opContinue())
+  )
+  handle('repo:opAbort', async () => requireEngine().opAbort())
+  handle('repo:opSkip', async () =>
+    record(requireEngine(), 'Skip', () => requireEngine().opSkip())
+  )
+
+  // ── M2: conflicts ──
+  handle('repo:conflict', async (_e, path) =>
+    requireEngine().conflict(requireString(path, 'path'))
+  )
+  handle('repo:resolveConflict', async (_e, path, content) =>
+    requireEngine().resolveConflict(
+      requireString(path, 'path'),
+      typeof content === 'string' ? content : ''
+    )
+  )
+
+  // ── M2: interactive rebase ──
+  handle('repo:rebasePlan', async (_e, onto) =>
+    requireEngine().rebasePlan(requireString(onto, 'onto'))
+  )
+  handle('repo:rebaseInteractive', async (_e, plan) => {
+    const p = (plan ?? {}) as Partial<RebasePlan>
+    if (typeof p.onto !== 'string' || !Array.isArray(p.steps)) {
+      throw new AppError('git', 'invalid rebase plan')
+    }
+    const onto = p.onto
+    const steps = p.steps
+    return record(requireEngine(), 'Interactive rebase', () =>
+      requireEngine().rebaseInteractive({ onto, steps })
+    )
+  })
+
+  // ── M2: undo / redo ──
+  handle('repo:undo', async () => state.undo.undo(requireEngine()))
+  handle('repo:redo', async () => state.undo.redo(requireEngine()))
+  handle('repo:undoState', async () => state.undo.state())
+
+  // ── M2: stash ──
+  handle('repo:stashPush', async (_e, message, includeUntracked) =>
+    requireEngine().stashPush(
+      typeof message === 'string' && message !== '' ? message : undefined,
+      includeUntracked === true
+    )
+  )
+  handle('repo:stashList', async () => requireEngine().stashList())
+  handle('repo:stashApply', async (_e, index, pop) =>
+    requireEngine().stashApply(typeof index === 'number' ? index : 0, pop === true)
+  )
+  handle('repo:stashDrop', async (_e, index) =>
+    requireEngine().stashDrop(typeof index === 'number' ? index : 0)
+  )
+
+  // ── M2: tags ──
+  handle('repo:tagCreate', async (_e, input) => {
+    const i = (input ?? {}) as Partial<TagInput>
+    const tag: TagInput = { name: requireString(i.name, 'name') }
+    if (typeof i.message === 'string' && i.message !== '') tag.message = i.message
+    if (typeof i.target === 'string' && i.target !== '') tag.target = i.target
+    return requireEngine().tagCreate(tag)
+  })
+  handle('repo:tagDelete', async (_e, name) =>
+    requireEngine().tagDelete(requireString(name, 'name'))
+  )
+  handle('repo:tagPush', async (_e, name) =>
+    requireEngine().tagPush(typeof name === 'string' && name !== '' ? name : null)
+  )
+
+  // ── M2: auth (token never leaves the main process) ──
+  handle('repo:authInfo', async () => auth.authInfo())
+  handle('repo:setToken', async (_e, host, token) => {
+    auth.setToken(requireString(host, 'host'), requireString(token, 'token'))
+  })
+  handle('repo:clearToken', async (_e, host) => {
+    auth.clearToken(requireString(host, 'host'))
+  })
 
   handle('dialog:pickDirectory', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender)
