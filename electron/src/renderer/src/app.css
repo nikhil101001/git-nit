@@ -1,0 +1,213 @@
+:root {
+  --bg: #1e1e22;
+  --fg: #e6e6e6;
+  --fg-muted: #9a9aa2;
+  --border: #34343c;
+  --accent: #6c8cff;
+
+  color-scheme: dark;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#app {
+  height: 100%;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --fg-muted: #6a6a72;
+    --border: #e2e2e6;
+    --accent: #3b5bdb;
+    color-scheme: light;
+  }
+}
+
+/* --- Layout (App) --- */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.topbar h1 {
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 700;
+}
+.panes {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.banner.error {
+  padding: 0.5rem 0.75rem;
+  background: #5b1d1d;
+  color: #ffd7d7;
+  font-size: 0.85rem;
+}
+.empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+}
+
+/* --- RepoPicker --- */
+.repo-picker {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.repo-picker:hover {
+  filter: brightness(1.1);
+}
+
+/* --- HeadBar --- */
+.headbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.headbar .ref {
+  font-weight: 600;
+}
+.headbar .branch {
+  color: var(--accent);
+}
+.headbar .detached {
+  color: #c0883a;
+}
+.headbar .summary {
+  color: var(--fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.headbar .path {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40%;
+}
+
+/* --- BranchList --- */
+.branches {
+  width: 240px;
+  flex: none;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+}
+.branches h2 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+  margin: 0.75rem 0 0.35rem;
+}
+.branches ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.branches li {
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.branches li.head {
+  font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.branches li.remote {
+  color: var(--fg-muted);
+}
+.branches .muted {
+  color: var(--fg-muted);
+}
+
+/* --- CommitList --- */
+.commits {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem;
+}
+.commits h2 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+  margin: 0 0 0.5rem;
+}
+.commits ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.commits li {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.commits .sha {
+  color: var(--accent);
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+}
+.commits .msg {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.commits .author,
+.commits .time {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.commits .muted {
+  color: var(--fg-muted);
+}
