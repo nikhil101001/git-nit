@@ -1,6 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 
+import './monaco-setup' // configures Monaco's bundled loader + worker (M2)
 import App from './App'
 import './app.css'
 
