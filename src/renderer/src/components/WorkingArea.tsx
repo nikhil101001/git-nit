@@ -1,18 +1,15 @@
-// Right-panel view when the Working Directory node is selected: file lists +
-// commit box on the left, the interactive diff on the right.
+// Right-panel content for the Working Directory: the staged/unstaged file lists
+// and the commit box. Selecting a file opens its diff in the center column (the
+// DiffView), GitKraken-style — not inline here.
 
 import StagingPanel from './StagingPanel'
 import CommitBox from './CommitBox'
-import DiffView from './DiffView'
 
 export default function WorkingArea(): React.JSX.Element {
   return (
-    <div className="work-area">
-      <div className="work-files">
-        <StagingPanel />
-        <CommitBox />
-      </div>
-      <DiffView />
+    <div className="work-panel">
+      <StagingPanel />
+      <CommitBox />
     </div>
   )
 }
