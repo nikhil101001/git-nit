@@ -29,6 +29,7 @@ import type {
   PullRequest,
   PullRequestInput,
   RebasePlan,
+  RecentRepo,
   RefreshEvent,
   RepoInfo,
   ResetMode,
@@ -179,3 +180,8 @@ export const worktreeRemove = (path: string, force: boolean): Promise<void> =>
   window.api.worktreeRemove(path, force)
 export const submodules = (): Promise<SubmoduleInfo[]> => window.api.submodules()
 export const submoduleUpdate = (): Promise<void> => window.api.submoduleUpdate()
+
+// M3 — recent repositories
+export const recentRepos = (): Promise<RecentRepo[]> => window.api.recentRepos()
+export const removeRecentRepo = (path: string): Promise<RecentRepo[]> =>
+  window.api.removeRecentRepo(path)

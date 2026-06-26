@@ -323,6 +323,10 @@ export interface GitApi {
   worktreeRemove(path: string, force: boolean): Promise<void>
   submodules(): Promise<SubmoduleInfo[]>
   submoduleUpdate(): Promise<void>
+
+  // M3 — recent repositories (welcome page)
+  recentRepos(): Promise<RecentRepo[]>
+  removeRecentRepo(path: string): Promise<RecentRepo[]>
 }
 
 // ───────────────────────────── M2 additions ─────────────────────────────
@@ -543,4 +547,16 @@ export interface SubmoduleInfo {
   describe: string | null
   /** ' ' up-to-date · '-' uninitialized · '+' out-of-date · 'U' conflict. */
   status: 'upToDate' | 'uninitialized' | 'outOfDate' | 'conflict'
+}
+
+/** A previously-opened repository, for the welcome page's Recent list. */
+export interface RecentRepo {
+  /** Absolute path used to re-open. */
+  path: string
+  /** Basename, shown as the title. */
+  name: string
+  /** Path with the home dir collapsed to `~`, for display. */
+  display: string
+  /** Last opened, seconds since the Unix epoch. */
+  lastOpenedUnix: number
 }

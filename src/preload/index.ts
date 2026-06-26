@@ -36,6 +36,7 @@ import type {
   PullRequest,
   PullRequestInput,
   RebasePlan,
+  RecentRepo,
   RefreshEvent,
   RepoInfo,
   ResetMode,
@@ -175,7 +176,11 @@ const api: GitApi = {
   worktreeAdd: (path, ref) => invoke<void>('repo:worktreeAdd', path, ref),
   worktreeRemove: (path, force) => invoke<void>('repo:worktreeRemove', path, force),
   submodules: () => invoke<SubmoduleInfo[]>('repo:submodules'),
-  submoduleUpdate: () => invoke<void>('repo:submoduleUpdate')
+  submoduleUpdate: () => invoke<void>('repo:submoduleUpdate'),
+
+  // M3 — recent repositories
+  recentRepos: () => invoke<RecentRepo[]>('repo:recents'),
+  removeRecentRepo: (path) => invoke<RecentRepo[]>('repo:recentsRemove', path)
 }
 
 contextBridge.exposeInMainWorld('api', api)

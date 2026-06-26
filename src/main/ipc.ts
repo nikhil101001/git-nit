@@ -32,6 +32,7 @@ import { runSync, type SyncOp } from './sync'
 import * as auth from './auth'
 import * as github from './github'
 import * as ai from './ai'
+import * as recents from './recents'
 
 function requireString(v: unknown, field: string): string {
   if (typeof v !== 'string' || v === '') {
@@ -108,6 +109,7 @@ export function registerIpc(): void {
     }
     state.engine = engine
     state.undo.clear() // undo history is per-repo
+    recents.add(canonical) // remember it for the welcome page
 
     // Watch the working tree (incl. .git refs) for both file edits and git ops.
     state.watcher = startWatcher(
@@ -116,6 +118,9 @@ export function registerIpc(): void {
     )
     return info
   })
+
+  handle('repo:recents', async () => recents.list())
+  handle('repo:recentsRemove', async (_e, path) => recents.remove(requireString(path, 'path')))
 
   handle('repo:head', async () => requireEngine().head())
 
