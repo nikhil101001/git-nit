@@ -38,7 +38,10 @@ function createWindow(): void {
     minHeight: 480,
     show: false,
     title: 'git-nit',
-    backgroundColor: '#1e1e22',
+    backgroundColor: '#000000',
+    // macOS: drop the native gray title bar and let the app's black toolbar fill
+    // the top; the traffic lights float over it (the toolbar is a drag region).
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

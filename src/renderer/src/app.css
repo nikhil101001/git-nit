@@ -1,6 +1,6 @@
 :root {
-  --bg: #1e1e22;
-  --bg-elev: #26262b;
+  --bg: #000000;
+  --bg-elev: #16161a;
   --fg: #e6e6e6;
   --fg-muted: #9a9aa2;
   --border: #34343c;
@@ -8,6 +8,8 @@
   --add: #98c379;
   --del: #e06c75;
   --danger: #e06c75;
+  --code-bg: #16161a;
+  --code-head: #1d1d24;
 
   color-scheme: dark;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -41,6 +43,8 @@ body {
     --add: #2e7d32;
     --del: #c5221f;
     --danger: #c5221f;
+    --code-bg: #f6f6f7;
+    --code-head: #ececef;
     color-scheme: light;
   }
 }
@@ -48,8 +52,8 @@ body {
 /* Explicit theme overrides (M3 ThemeSwitcher) win over the media query via the
    higher [data-theme] specificity, regardless of the OS preference. */
 :root[data-theme='dark'] {
-  --bg: #1e1e22;
-  --bg-elev: #26262b;
+  --bg: #000000;
+  --bg-elev: #16161a;
   --fg: #e6e6e6;
   --fg-muted: #9a9aa2;
   --border: #34343c;
@@ -57,6 +61,8 @@ body {
   --add: #98c379;
   --del: #e06c75;
   --danger: #e06c75;
+  --code-bg: #16161a;
+  --code-head: #1d1d24;
   color-scheme: dark;
 }
 :root[data-theme='light'] {
@@ -69,6 +75,8 @@ body {
   --add: #2e7d32;
   --del: #c5221f;
   --danger: #c5221f;
+  --code-bg: #f6f6f7;
+  --code-head: #ececef;
   color-scheme: light;
 }
 
@@ -110,11 +118,40 @@ button.mini {
   height: 100vh;
 }
 .topbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.45rem 0.75rem;
+  min-height: 2.75rem;
   border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  /* The toolbar doubles as the window drag handle (native title bar is hidden). */
+  -webkit-app-region: drag;
+}
+/* App name centered in the window (absolute, so the right-side toolbar width
+   doesn't shift it); purely a label, so it never intercepts drag/clicks. */
+.app-name {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+/* Leave room for the macOS traffic lights when the title bar is hidden. */
+.is-mac .topbar {
+  padding-left: 80px;
+}
+/* Interactive controls must stay clickable, not drag the window. */
+.topbar button,
+.topbar select,
+.topbar input,
+.topbar .repo-picker {
+  -webkit-app-region: no-drag;
 }
 .topbar h1 {
   font-size: 1rem;
@@ -199,21 +236,52 @@ button.mini {
   display: flex;
   min-height: 0;
 }
-.right-panel {
-  width: 42%;
-  min-width: 320px;
+.pane-sidebar {
   flex: none;
-  border-left: 1px solid var(--border);
   display: flex;
   min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+.pane-center {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.pane-right {
+  flex: none;
+  display: flex;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+}
+
+/* Draggable column splitters */
+.resize-handle {
+  flex: none;
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 5;
+  transition: background 0.12s;
+}
+.resize-handle:hover {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+}
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+body.resizing .resize-handle {
+  background: var(--accent);
 }
 
 /* ── Branch sidebar ── */
 .branches {
-  width: 240px;
-  flex: none;
+  width: 100%;
+  flex: 1;
   overflow-y: auto;
-  border-right: 1px solid var(--border);
   padding: 0.5rem 0.6rem;
 }
 .wd-node {
@@ -425,17 +493,10 @@ button.mini {
 }
 
 /* ── Working area ── */
-.work-area {
+.work-panel {
   flex: 1;
   display: flex;
-  min-height: 0;
-}
-.work-files {
-  width: 46%;
-  min-width: 220px;
-  display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border);
   min-height: 0;
 }
 .staging {
@@ -555,98 +616,8 @@ button.mini {
   font-size: 0.8rem;
 }
 
-/* ── Diff ── */
-.diff {
-  flex: 1;
-  overflow: auto;
-  font-family: ui-monospace, monospace;
-  font-size: 0.78rem;
-  min-width: 0;
-}
-.diff.empty {
-  display: grid;
-  place-items: center;
-  color: var(--fg-muted);
-  font-family: system-ui, sans-serif;
-}
-.diff-head {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  font-family: system-ui, sans-serif;
-}
-.diff-path {
-  font-weight: 600;
-}
-.diff-side {
-  font-size: 0.7rem;
-  color: var(--fg-muted);
-  text-transform: uppercase;
-}
-.diff-lineactions {
-  margin-left: auto;
-  display: flex;
-  gap: 0.3rem;
-}
-.hunk-head {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  background: var(--bg-elev);
-  padding: 0.2rem 0.6rem;
-  color: var(--fg-muted);
-}
-.hunk-head code {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.hunk-actions {
-  display: flex;
-  gap: 0.3rem;
-}
-.dl {
-  display: flex;
-  white-space: pre;
-}
-.dl .ln {
-  width: 3.2rem;
-  flex: none;
-  text-align: right;
-  padding-right: 0.4rem;
-  color: var(--fg-muted);
-  opacity: 0.6;
-  user-select: none;
-}
-.dl .origin {
-  width: 1.1rem;
-  flex: none;
-  text-align: center;
-  user-select: none;
-}
-.dl .content {
-  flex: 1;
-}
-.dl.add {
-  background: color-mix(in srgb, var(--add) 14%, transparent);
-}
-.dl.del {
-  background: color-mix(in srgb, var(--del) 14%, transparent);
-}
-.dl.selectable {
-  cursor: pointer;
-}
-.dl.selectable:hover {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-}
-.dl.picked {
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
-}
+/* ── Diff ── Diff viewer styles + syntax highlighting live in diff.css
+   (imported from main.tsx). */
 
 /* ── Commit detail ── */
 .detail {
@@ -1006,12 +977,6 @@ button.mini {
 }
 
 /* ════════════════════════ M3 ════════════════════════ */
-
-/* Blame / history entry buttons in the diff header */
-.diff-file-actions {
-  display: flex;
-  gap: 0.25rem;
-}
 
 /* Blame overlay */
 .blame-modal {
@@ -1461,3 +1426,135 @@ button.mini {
   background: var(--accent);
   color: #fff;
 }
+
+/* Welcome / empty-state page (GitKraken-style) */
+.welcome {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 4rem 2rem;
+}
+.welcome-panel {
+  width: 100%;
+  max-width: 640px;
+}
+.welcome-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 1.2rem;
+}
+.welcome-actions {
+  margin-bottom: 1rem;
+}
+.welcome-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.3rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+}
+.welcome-open:hover:not(:disabled) {
+  filter: brightness(1.08);
+  border-color: transparent;
+}
+.welcome-open-icon {
+  font-size: 1.05rem;
+}
+.welcome-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.welcome-search:focus-within {
+  border-color: var(--accent);
+}
+.welcome-search-icon {
+  color: var(--fg-muted);
+  font-size: 1.05rem;
+}
+.welcome-search input {
+  flex: 1;
+  font: inherit;
+  background: transparent;
+  border: none;
+  color: var(--fg);
+  padding: 0.6rem 0;
+  outline: none;
+}
+.welcome-recent-head {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 0 0 0.4rem;
+}
+.recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.recent-item {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+.recent-item:hover {
+  background: var(--bg-elev);
+}
+.recent-open {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.5rem 0.7rem;
+  overflow: hidden;
+}
+.recent-open:hover {
+  border-color: transparent;
+}
+.recent-name {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+.recent-path {
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-remove {
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  opacity: 0;
+  padding: 0.2rem 0.55rem;
+}
+.recent-item:hover .recent-remove {
+  opacity: 1;
+}
+.recent-remove:hover {
+  color: var(--danger);
+  border-color: transparent;
+}
+.recent-empty {
+  padding: 0.5rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+/* Syntax-highlighting palette moved to diff.css. */
