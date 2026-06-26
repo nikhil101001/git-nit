@@ -1,4 +1,0 @@
-# ts-rs writes generated TypeScript here when `cargo test export_bindings` runs.
-# Path is relative to this crate's Cargo.toml -> ../src/lib/bindings/.
-[env]
-TS_RS_EXPORT_DIR = { value = "../src/lib/bindings/", relative = true }

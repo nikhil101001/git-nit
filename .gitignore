@@ -1,16 +1,21 @@
-# --- Monorepo root ignores ---
-# Per-app build artifacts (node_modules, dist, target, generated bindings/schemas)
-# are handled by each app's own .gitignore (tauri/.gitignore, electron/.gitignore).
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+.vite/
 
 # OS / editor junk
 .DS_Store
 *.swp
 *~
+*.log
 .idea/
 .vscode/
 
 # Claude Code local settings (keep shared settings.json, ignore the local override)
 .claude/settings.local.json
 
-
+# Local planning / thinking notes (not shipped)
 thoughts/
