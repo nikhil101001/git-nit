@@ -8,29 +8,45 @@
 
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  AiConfig,
+  AiConfigInput,
+  AiProviderId,
+  AiResult,
   AuthInfo,
+  BlameLine,
   BranchInfo,
   CommitInput,
   CommitPage,
   ConflictFile,
   FileDiff,
+  FileHistoryEntry,
   GitApi,
+  GitFlowConfig,
+  GitFlowKind,
+  GitFlowStatus,
+  GitHubAuthState,
+  GitHubDeviceCode,
   GraphFilters,
   GraphPage,
   HeadInfo,
   IpcResult,
+  Issue,
   OpProgress,
   OpStatus,
+  PullRequest,
+  PullRequestInput,
   RebasePlan,
   RefreshEvent,
   RepoInfo,
   ResetMode,
   StageSelection,
   StashEntry,
+  SubmoduleInfo,
   SyncProgress,
   TagInput,
   UndoState,
-  WorkingStatus
+  WorkingStatus,
+  WorktreeInfo
 } from '../shared/types'
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
@@ -126,7 +142,40 @@ const api: GitApi = {
   clearToken: (host) => invoke<void>('repo:clearToken', host),
 
   // M2 — long-op progress
-  onOpProgress: (cb: (p: OpProgress) => void) => subscribe('repo://op-progress', cb)
+  onOpProgress: (cb: (p: OpProgress) => void) => subscribe('repo://op-progress', cb),
+
+  // M3 — blame & file history
+  blame: (path) => invoke<BlameLine[]>('repo:blame', path),
+  fileHistory: (path, limit) => invoke<FileHistoryEntry[]>('repo:fileHistory', path, limit),
+  fileHistoryDiff: (oid, path) => invoke<FileDiff>('repo:fileHistoryDiff', oid, path),
+
+  // M3 — GitHub
+  githubAuthState: () => invoke<GitHubAuthState>('gh:authState'),
+  githubStartDeviceFlow: () => invoke<GitHubDeviceCode>('gh:startDeviceFlow'),
+  githubAwaitAuth: () => invoke<GitHubAuthState>('gh:awaitAuth'),
+  githubSignOut: () => invoke<void>('gh:signOut'),
+  githubListPulls: () => invoke<PullRequest[]>('gh:listPulls'),
+  githubListIssues: () => invoke<Issue[]>('gh:listIssues'),
+  githubCreatePull: (input: PullRequestInput) => invoke<PullRequest>('gh:createPull', input),
+
+  // M3 — AI commit messages
+  aiConfig: () => invoke<AiConfig>('ai:config'),
+  aiSetConfig: (input: AiConfigInput) => invoke<AiConfig>('ai:setConfig', input),
+  aiSetKey: (provider: AiProviderId, key) => invoke<void>('ai:setKey', provider, key),
+  aiGenerateCommitMessage: () => invoke<AiResult>('ai:generate'),
+
+  // M3 — GitFlow
+  gitflowStatus: () => invoke<GitFlowStatus>('flow:status'),
+  gitflowInit: (config: GitFlowConfig) => invoke<void>('flow:init', config),
+  gitflowStart: (kind: GitFlowKind, name) => invoke<void>('flow:start', kind, name),
+  gitflowFinish: (kind: GitFlowKind, name) => invoke<void>('flow:finish', kind, name),
+
+  // M3 — worktrees & submodules
+  worktrees: () => invoke<WorktreeInfo[]>('repo:worktrees'),
+  worktreeAdd: (path, ref) => invoke<void>('repo:worktreeAdd', path, ref),
+  worktreeRemove: (path, force) => invoke<void>('repo:worktreeRemove', path, force),
+  submodules: () => invoke<SubmoduleInfo[]>('repo:submodules'),
+  submoduleUpdate: () => invoke<void>('repo:submoduleUpdate')
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -12,8 +12,13 @@ import {
 import { realpathSync } from 'node:fs'
 
 import type {
+  AiConfigInput,
+  AiProviderId,
+  GitFlowConfig,
+  GitFlowKind,
   GraphFilters,
   IpcResult,
+  PullRequestInput,
   RebasePlan,
   ResetMode,
   StageSelection,
@@ -25,6 +30,8 @@ import { state } from './state'
 import { startWatcher } from './watcher'
 import { runSync, type SyncOp } from './sync'
 import * as auth from './auth'
+import * as github from './github'
+import * as ai from './ai'
 
 function requireString(v: unknown, field: string): string {
   if (typeof v !== 'string' || v === '') {
@@ -300,6 +307,88 @@ export function registerIpc(): void {
   handle('repo:clearToken', async (_e, host) => {
     auth.clearToken(requireString(host, 'host'))
   })
+
+  // ════════════════════════════════ M3 ════════════════════════════════
+
+  // ── blame & file history ──
+  handle('repo:blame', async (_e, path) => requireEngine().blame(requireString(path, 'path')))
+  handle('repo:fileHistory', async (_e, path, limit) =>
+    requireEngine().fileHistory(
+      requireString(path, 'path'),
+      typeof limit === 'number' && limit > 0 ? Math.floor(limit) : 200
+    )
+  )
+  handle('repo:fileHistoryDiff', async (_e, oid, path) =>
+    requireEngine().fileHistoryDiff(requireString(oid, 'oid'), requireString(path, 'path'))
+  )
+
+  // ── GitHub (origin/branch resolved here; token stays in main) ──
+  handle('gh:authState', async () => github.authState())
+  handle('gh:startDeviceFlow', async () => github.startDeviceFlow())
+  handle('gh:awaitAuth', async () => github.awaitAuth())
+  handle('gh:signOut', async () => github.signOut())
+  handle('gh:listPulls', async () => github.listPulls(await requireEngine().originUrl()))
+  handle('gh:listIssues', async () => github.listIssues(await requireEngine().originUrl()))
+  handle('gh:createPull', async (_e, input) => {
+    const i = (input ?? {}) as Partial<PullRequestInput>
+    const pr: PullRequestInput = {
+      title: requireString(i.title, 'title'),
+      body: typeof i.body === 'string' ? i.body : '',
+      base: requireString(i.base, 'base'),
+      head: typeof i.head === 'string' ? i.head : ''
+    }
+    const engine = requireEngine()
+    const branch = (await engine.head()).branch
+    return github.createPull(await engine.originUrl(), pr, branch)
+  })
+
+  // ── AI commit messages (key + SDK never leave main) ──
+  handle('ai:config', async () => ai.getConfig())
+  handle('ai:setConfig', async (_e, input) => {
+    const i = (input ?? {}) as AiConfigInput
+    const cfg: AiConfigInput = {}
+    if (typeof i.enabled === 'boolean') cfg.enabled = i.enabled
+    if (i.provider === 'anthropic' || i.provider === 'ollama') cfg.provider = i.provider
+    if (typeof i.model === 'string') cfg.model = i.model
+    return ai.setConfig(cfg)
+  })
+  handle('ai:setKey', async (_e, provider, key) => {
+    const p: AiProviderId = provider === 'ollama' ? 'ollama' : 'anthropic'
+    ai.setKey(p, requireString(key, 'key'))
+  })
+  handle('ai:generate', async () => {
+    const { patch, stat } = await requireEngine().stagedDiff()
+    return ai.generateCommitMessage(patch, stat)
+  })
+
+  // ── GitFlow (cross-branch finish is not snapshot-undoable; renderer confirms) ──
+  const asFlowKind = (v: unknown): GitFlowKind =>
+    v === 'release' ? 'release' : v === 'hotfix' ? 'hotfix' : 'feature'
+  handle('flow:status', async () => requireEngine().gitflowStatus())
+  handle('flow:init', async (_e, config) => {
+    const c = (config ?? {}) as Partial<GitFlowConfig>
+    return requireEngine().gitflowInit({
+      develop: typeof c.develop === 'string' && c.develop ? c.develop : 'develop',
+      main: typeof c.main === 'string' && c.main ? c.main : 'main'
+    })
+  })
+  handle('flow:start', async (_e, kind, name) =>
+    requireEngine().gitflowStart(asFlowKind(kind), requireString(name, 'name'))
+  )
+  handle('flow:finish', async (_e, kind, name) =>
+    requireEngine().gitflowFinish(asFlowKind(kind), requireString(name, 'name'))
+  )
+
+  // ── worktrees & submodules ──
+  handle('repo:worktrees', async () => requireEngine().worktrees())
+  handle('repo:worktreeAdd', async (_e, path, ref) =>
+    requireEngine().worktreeAdd(requireString(path, 'path'), typeof ref === 'string' ? ref : '')
+  )
+  handle('repo:worktreeRemove', async (_e, path, force) =>
+    requireEngine().worktreeRemove(requireString(path, 'path'), force === true)
+  )
+  handle('repo:submodules', async () => requireEngine().submodules())
+  handle('repo:submoduleUpdate', async () => requireEngine().submoduleUpdate())
 
   handle('dialog:pickDirectory', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender)
