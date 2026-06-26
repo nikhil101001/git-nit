@@ -9,6 +9,7 @@ import Editor from '@monaco-editor/react'
 
 import type { ConflictFile } from '../../../shared/types'
 import { useUi } from '../ui-store'
+import { useTheme } from '../theme-store'
 import * as ipc from '../ipc'
 import * as actions from '../actions'
 
@@ -17,6 +18,7 @@ const EDITABLE = { minimap: { enabled: false }, scrollBeyondLastLine: false }
 
 export default function ConflictEditor(): React.JSX.Element | null {
   const path = useUi((s) => s.conflictPath)
+  const monacoTheme = useTheme((s) => s.monaco)
   const close = (): void => useUi.getState().openConflict(null)
   const [cf, setCf] = useState<ConflictFile | null>(null)
   const [result, setResult] = useState('')
@@ -62,13 +64,13 @@ export default function ConflictEditor(): React.JSX.Element | null {
         <div className="conflict-panes">
           <div className="cpane">
             <h4>Ours</h4>
-            <Editor height="100%" theme="vs-dark" value={cf.ours ?? ''} options={READONLY} />
+            <Editor height="100%" theme={monacoTheme} value={cf.ours ?? ''} options={READONLY} />
           </div>
           <div className="cpane">
             <h4>Result (editable)</h4>
             <Editor
               height="100%"
-              theme="vs-dark"
+              theme={monacoTheme}
               value={result}
               onChange={(v) => setResult(v ?? '')}
               options={EDITABLE}
@@ -76,7 +78,7 @@ export default function ConflictEditor(): React.JSX.Element | null {
           </div>
           <div className="cpane">
             <h4>Theirs</h4>
-            <Editor height="100%" theme="vs-dark" value={cf.theirs ?? ''} options={READONLY} />
+            <Editor height="100%" theme={monacoTheme} value={cf.theirs ?? ''} options={READONLY} />
           </div>
         </div>
         <footer className="conflict-foot">

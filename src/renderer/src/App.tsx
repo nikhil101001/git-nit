@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 
 import { useRepo } from './store'
 import { useGraph } from './graph-store'
+import { useUi } from './ui-store'
 import { onRefresh } from './ipc'
 import * as actions from './actions'
 import RepoPicker from './components/RepoPicker'
@@ -18,6 +19,14 @@ import StashPanel from './components/StashPanel'
 import TagDialog from './components/TagDialog'
 import AuthDialog from './components/AuthDialog'
 import CommitContextMenu from './components/CommitContextMenu'
+import BlameView from './components/BlameView'
+import FileHistory from './components/FileHistory'
+import GitHubPanel from './components/GitHubPanel'
+import DeviceFlowDialog from './components/DeviceFlowDialog'
+import AiSettings from './components/AiSettings'
+import GitFlowMenu from './components/GitFlowMenu'
+import WorktreePanel from './components/WorktreePanel'
+import CommandPalette from './components/CommandPalette'
 
 export default function App(): React.JSX.Element {
   const repo = useRepo((s) => s.repo)
@@ -27,6 +36,19 @@ export default function App(): React.JSX.Element {
 
   // Re-fetch every view whenever the backend reports a filesystem change.
   useEffect(() => onRefresh(() => void actions.refreshAll()), [])
+
+  // Global ⌘K / Ctrl+K toggles the command palette.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        const ui = useUi.getState()
+        ui.setShowPalette(!ui.showPalette)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <main className="app">
@@ -64,6 +86,14 @@ export default function App(): React.JSX.Element {
       <TagDialog />
       <AuthDialog />
       <CommitContextMenu />
+      <BlameView />
+      <FileHistory />
+      <GitHubPanel />
+      <DeviceFlowDialog />
+      <AiSettings />
+      <GitFlowMenu />
+      <WorktreePanel />
+      <CommandPalette />
     </main>
   )
 }

@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 
 import type { StageSelection } from '../../../shared/types'
 import { useStatus } from '../status-store'
+import { useHistory } from '../history-store'
 import * as actions from '../actions'
 
 export default function DiffView(): React.JSX.Element {
@@ -71,6 +72,14 @@ export default function DiffView(): React.JSX.Element {
       <div className="diff-head">
         <span className="diff-path">{sel.path}</span>
         <span className="diff-side">{staged ? 'staged' : 'unstaged'}</span>
+        <span className="diff-file-actions">
+          <button className="mini" title="Blame this file" onClick={() => void useHistory.getState().openBlame(sel.path)}>
+            Blame
+          </button>
+          <button className="mini" title="File history" onClick={() => void useHistory.getState().openHistory(sel.path)}>
+            History
+          </button>
+        </span>
         {picked.size > 0 && (
           <span className="diff-lineactions">
             {staged ? (
