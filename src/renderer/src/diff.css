@@ -1,0 +1,266 @@
+/* Diff viewer — layout + syntax highlighting. Kept separate from app.css for
+   file management; imported from main.tsx. Uses the theme tokens defined in
+   app.css (--code-bg, --code-head, --add, --del, --accent, --fg-muted).
+   The syntax palette mirrors the "pur-black" VS Code theme (Material Palenight). */
+
+/* ── Layout ── */
+.diff {
+  flex: 1;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  min-width: 0;
+  /* Dark-gray code surface, separated from the (black) surrounding UI. */
+  background: var(--code-bg);
+}
+.diff.empty {
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+  font-family: system-ui, sans-serif;
+}
+.diff-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--code-head);
+  font-family: system-ui, sans-serif;
+}
+.diff-path {
+  font-weight: 600;
+}
+.diff-side {
+  font-size: 0.7rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+}
+.diff-head-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.diff-lineactions {
+  display: flex;
+  gap: 0.3rem;
+}
+.diff-close {
+  font-weight: 700;
+  color: var(--fg-muted);
+}
+.diff-close:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--danger);
+}
+.hunk-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--code-head);
+  padding: 0.25rem 0.6rem;
+  color: var(--fg-muted);
+  /* Separate the hunk header (stage/discard hunk) from the code above and below. */
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Diff view-mode toggle (Split / Inline / Hunk) */
+.diff-modes {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.diff-mode {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.72rem;
+}
+.diff-mode:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.diff-mode:hover:not(.active) {
+  background: var(--code-head);
+  border-color: transparent;
+}
+.diff-mode.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Split (side-by-side) view */
+.dl-split {
+  display: flex;
+}
+.dl-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  white-space: pre;
+  overflow: hidden;
+}
+.dl-cell + .dl-cell {
+  border-left: 1px solid var(--border);
+}
+.dl-cell .ln {
+  width: 3rem;
+  flex: none;
+  text-align: right;
+  padding-right: 0.4rem;
+  color: var(--fg-muted);
+  opacity: 0.6;
+  user-select: none;
+}
+.dl-cell .content {
+  flex: 1;
+  padding-left: 0.4rem;
+  overflow: hidden;
+}
+.dl-cell.add {
+  background: color-mix(in srgb, var(--add) 14%, transparent);
+}
+.dl-cell.del {
+  background: color-mix(in srgb, var(--del) 14%, transparent);
+}
+.dl-cell.empty {
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+.dl-cell.selectable {
+  cursor: pointer;
+}
+.dl-cell.selectable:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.dl-cell.picked {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.hunk-head code {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hunk-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+.dl {
+  display: flex;
+  white-space: pre;
+}
+.dl .ln {
+  width: 3.2rem;
+  flex: none;
+  text-align: right;
+  padding-right: 0.4rem;
+  color: var(--fg-muted);
+  opacity: 0.6;
+  user-select: none;
+}
+.dl .origin {
+  width: 1.1rem;
+  flex: none;
+  text-align: center;
+  user-select: none;
+}
+.dl .content {
+  flex: 1;
+}
+.dl.add {
+  background: color-mix(in srgb, var(--add) 14%, transparent);
+}
+.dl.del {
+  background: color-mix(in srgb, var(--del) 14%, transparent);
+}
+.dl.selectable {
+  cursor: pointer;
+}
+.dl.selectable:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.dl.picked {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+/* ── Syntax highlighting — pur-black / Material Palenight palette ── */
+.diff .hljs {
+  color: var(--fg);
+}
+.diff .hljs-comment,
+.diff .hljs-quote {
+  color: #616161;
+  font-style: italic;
+}
+.diff .hljs-keyword,
+.diff .hljs-selector-tag,
+.diff .hljs-attr {
+  color: #c792ea;
+}
+.diff .hljs-operator,
+.diff .hljs-punctuation,
+.diff .hljs-subst,
+.diff .hljs-regexp,
+.diff .hljs-template-tag,
+.diff .hljs-template-variable,
+.diff .hljs-char.escape_,
+.diff .hljs-selector-attr,
+.diff .hljs-selector-pseudo {
+  color: #89ddff;
+}
+.diff .hljs-tag,
+.diff .hljs-name,
+.diff .hljs-deletion,
+.diff .hljs-variable.language_,
+.diff .hljs-selector-id {
+  color: #ff5370;
+}
+.diff .hljs-title,
+.diff .hljs-title.function_,
+.diff .hljs-function .hljs-title,
+.diff .hljs-meta {
+  color: #82aaff;
+}
+.diff .hljs-number,
+.diff .hljs-literal,
+.diff .hljs-params,
+.diff .hljs-variable.constant_,
+.diff .hljs-bullet,
+.diff .hljs-meta .hljs-keyword {
+  color: #f78c6c;
+}
+.diff .hljs-string,
+.diff .hljs-addition,
+.diff .hljs-symbol,
+.diff .hljs-section,
+.diff .hljs-meta .hljs-string {
+  color: #c3e88d;
+}
+.diff .hljs-built_in,
+.diff .hljs-title.class_,
+.diff .hljs-class .hljs-title,
+.diff .hljs-selector-class {
+  color: #ffcb6b;
+}
+.diff .hljs-type,
+.diff .hljs-attribute {
+  color: #b2ccd6;
+}
+.diff .hljs-variable,
+.diff .hljs-property,
+.diff .hljs-doctag {
+  color: #eeffff;
+}
+.diff .hljs-link {
+  text-decoration: underline;
+}
+.diff .hljs-emphasis {
+  font-style: italic;
+}
+.diff .hljs-strong {
+  font-weight: 700;
+}
