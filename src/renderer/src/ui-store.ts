@@ -19,6 +19,12 @@ interface UiState {
   tagForOid: string | null
   showAuth: boolean
   context: ContextTarget | null
+  // M3 panels/dialogs
+  showGitHub: boolean
+  showAiSettings: boolean
+  showGitFlow: boolean
+  showWorktrees: boolean
+  showPalette: boolean
 
   openConflict: (path: string | null) => void
   openRebase: (plan: RebasePlan | null) => void
@@ -27,6 +33,11 @@ interface UiState {
   setShowAuth: (v: boolean) => void
   openContext: (t: ContextTarget) => void
   closeContext: () => void
+  setShowGitHub: (v: boolean) => void
+  setShowAiSettings: (v: boolean) => void
+  setShowGitFlow: (v: boolean) => void
+  setShowWorktrees: (v: boolean) => void
+  setShowPalette: (v: boolean) => void
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -36,6 +47,11 @@ export const useUi = create<UiState>((set) => ({
   tagForOid: null,
   showAuth: false,
   context: null,
+  showGitHub: false,
+  showAiSettings: false,
+  showGitFlow: false,
+  showWorktrees: false,
+  showPalette: false,
 
   openConflict: (conflictPath) => set({ conflictPath }),
   openRebase: (rebasePlan) => set({ rebasePlan }),
@@ -43,5 +59,10 @@ export const useUi = create<UiState>((set) => ({
   setTagFor: (tagForOid) => set({ tagForOid }),
   setShowAuth: (showAuth) => set({ showAuth }),
   openContext: (context) => set({ context }),
-  closeContext: () => set({ context: null })
+  closeContext: () => set({ context: null }),
+  setShowGitHub: (showGitHub) => set({ showGitHub }),
+  setShowAiSettings: (showAiSettings) => set({ showAiSettings }),
+  setShowGitFlow: (showGitFlow) => set({ showGitFlow }),
+  setShowWorktrees: (showWorktrees) => set({ showWorktrees }),
+  setShowPalette: (showPalette) => set({ showPalette })
 }))

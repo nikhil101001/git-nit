@@ -3,27 +3,43 @@
 // depends on the contract through here.
 
 import type {
+  AiConfig,
+  AiConfigInput,
+  AiProviderId,
+  AiResult,
   AuthInfo,
+  BlameLine,
   BranchInfo,
   CommitInput,
   CommitPage,
   ConflictFile,
   FileDiff,
+  FileHistoryEntry,
+  GitFlowConfig,
+  GitFlowKind,
+  GitFlowStatus,
+  GitHubAuthState,
+  GitHubDeviceCode,
   GraphFilters,
   GraphPage,
   HeadInfo,
+  Issue,
   OpProgress,
   OpStatus,
+  PullRequest,
+  PullRequestInput,
   RebasePlan,
   RefreshEvent,
   RepoInfo,
   ResetMode,
   StageSelection,
   StashEntry,
+  SubmoduleInfo,
   SyncProgress,
   TagInput,
   UndoState,
-  WorkingStatus
+  WorkingStatus,
+  WorktreeInfo
 } from '../../shared/types'
 
 // M0
@@ -120,3 +136,46 @@ export const clearToken = (host: string): Promise<void> => window.api.clearToken
 // M2 — long-op progress
 export const onOpProgress = (cb: (p: OpProgress) => void): (() => void) =>
   window.api.onOpProgress(cb)
+
+// M3 — blame & file history
+export const blame = (path: string): Promise<BlameLine[]> => window.api.blame(path)
+export const fileHistory = (path: string, limit?: number): Promise<FileHistoryEntry[]> =>
+  window.api.fileHistory(path, limit)
+export const fileHistoryDiff = (oid: string, path: string): Promise<FileDiff> =>
+  window.api.fileHistoryDiff(oid, path)
+
+// M3 — GitHub
+export const githubAuthState = (): Promise<GitHubAuthState> => window.api.githubAuthState()
+export const githubStartDeviceFlow = (): Promise<GitHubDeviceCode> =>
+  window.api.githubStartDeviceFlow()
+export const githubAwaitAuth = (): Promise<GitHubAuthState> => window.api.githubAwaitAuth()
+export const githubSignOut = (): Promise<void> => window.api.githubSignOut()
+export const githubListPulls = (): Promise<PullRequest[]> => window.api.githubListPulls()
+export const githubListIssues = (): Promise<Issue[]> => window.api.githubListIssues()
+export const githubCreatePull = (input: PullRequestInput): Promise<PullRequest> =>
+  window.api.githubCreatePull(input)
+
+// M3 — AI commit messages
+export const aiConfig = (): Promise<AiConfig> => window.api.aiConfig()
+export const aiSetConfig = (input: AiConfigInput): Promise<AiConfig> => window.api.aiSetConfig(input)
+export const aiSetKey = (provider: AiProviderId, key: string): Promise<void> =>
+  window.api.aiSetKey(provider, key)
+export const aiGenerateCommitMessage = (): Promise<AiResult> =>
+  window.api.aiGenerateCommitMessage()
+
+// M3 — GitFlow
+export const gitflowStatus = (): Promise<GitFlowStatus> => window.api.gitflowStatus()
+export const gitflowInit = (config: GitFlowConfig): Promise<void> => window.api.gitflowInit(config)
+export const gitflowStart = (kind: GitFlowKind, name: string): Promise<void> =>
+  window.api.gitflowStart(kind, name)
+export const gitflowFinish = (kind: GitFlowKind, name: string): Promise<void> =>
+  window.api.gitflowFinish(kind, name)
+
+// M3 — worktrees & submodules
+export const worktrees = (): Promise<WorktreeInfo[]> => window.api.worktrees()
+export const worktreeAdd = (path: string, ref: string): Promise<void> =>
+  window.api.worktreeAdd(path, ref)
+export const worktreeRemove = (path: string, force: boolean): Promise<void> =>
+  window.api.worktreeRemove(path, force)
+export const submodules = (): Promise<SubmoduleInfo[]> => window.api.submodules()
+export const submoduleUpdate = (): Promise<void> => window.api.submoduleUpdate()
