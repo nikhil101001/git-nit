@@ -16,12 +16,17 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import type {
+  BlameLine,
   BranchInfo,
   CommitInput,
   CommitPage,
   CommitSummary,
   ConflictFile,
   FileDiff,
+  FileHistoryEntry,
+  GitFlowConfig,
+  GitFlowKind,
+  GitFlowStatus,
   GraphFilters,
   GraphPage,
   OpStatus,
@@ -33,12 +38,17 @@ import type {
   StageSelection,
   StashEntry,
   StatusEntry,
+  SubmoduleInfo,
   TagInput,
-  WorkingStatus
+  WorkingStatus,
+  WorktreeInfo
 } from '../../shared/types'
 import { AppError } from '../errors'
 import { assignLanes } from './graph'
 import { buildPatch, parseUnifiedDiff } from './diff'
+import { parseBlamePorcelain } from './blame'
+import { parseSubmoduleStatus, parseWorktreeList } from './worktree'
+import { finishTargets, flowBranchName, parseFlowBranch } from './gitflow'
 import type { GitEngine } from './index'
 
 const execFileAsync = promisify(execFile)
@@ -813,6 +823,154 @@ export class CliEngine implements GitEngine {
     return this.run(['remote', 'get-url', 'origin'])
       .then((s) => s.trim() || null)
       .catch(() => null)
+  }
+
+  // ════════════════════════════════ M3 ════════════════════════════════
+
+  // ── blame & file history ──
+
+  async blame(path: string): Promise<BlameLine[]> {
+    const out = await this.run(['blame', '--porcelain', '--', path]).catch(asThrow)
+    return parseBlamePorcelain(out)
+  }
+
+  async fileHistory(path: string, limit: number): Promise<FileHistoryEntry[]> {
+    // --name-status gives the path at each revision (R lines carry old→new), so
+    // the viewer can follow renames; an RS prefix splits commits unambiguously.
+    const fmt = `${RS}%H${US}%h${US}%s${US}%an${US}%at`
+    const out = await this.run([
+      'log',
+      '--follow',
+      '-n',
+      String(limit),
+      `--format=${fmt}`,
+      '--name-status',
+      '--',
+      path
+    ]).catch(asThrow)
+
+    const entries: FileHistoryEntry[] = []
+    for (const record of out.split(RS)) {
+      const rec = record.replace(/^[\r\n]+/, '')
+      if (rec === '') continue
+      const nl = rec.indexOf('\n')
+      const header = nl === -1 ? rec : rec.slice(0, nl)
+      const body = nl === -1 ? '' : rec.slice(nl + 1)
+      const [oid, shortOid, summary, authorName, at] = header.split(US)
+
+      // The status line (e.g. "M\tpath" or "R096\told\tnew") names the path here.
+      let p = path
+      const statusLine = body.split('\n').find((l) => l.trim() !== '')
+      if (statusLine) {
+        const parts = statusLine.split('\t')
+        p = parts.length >= 3 ? parts[2] : parts[1] ?? path
+      }
+      entries.push({ oid, shortOid, summary, authorName, timeUnix: Number(at), path: p })
+    }
+    return entries
+  }
+
+  async fileHistoryDiff(oid: string, path: string): Promise<FileDiff> {
+    // `--format=` drops the commit header, leaving just the unified diff.
+    const out = await this.run([
+      'show',
+      '--no-color',
+      '-U3',
+      '--format=',
+      oid,
+      '--',
+      path
+    ]).catch(asThrow)
+    return parseUnifiedDiff(out, path)
+  }
+
+  // ── GitFlow (branch conventions; config persisted in git config) ──
+
+  async gitflowStatus(): Promise<GitFlowStatus> {
+    const cfg = async (key: string): Promise<string | null> =>
+      this.run(['config', '--get', key]).then((s) => s.trim() || null).catch(() => null)
+    const develop = (await cfg('gitflow.branch.develop')) ?? 'develop'
+    const main = (await cfg('gitflow.branch.main')) ?? 'main'
+    const initialized = (await cfg('gitflow.branch.develop')) !== null
+    const branch = (await this.head()).branch
+    const current = branch ? parseFlowBranch(branch) : null
+    return { initialized, develop, main, current }
+  }
+
+  async gitflowInit(config: GitFlowConfig): Promise<void> {
+    await this.run(['config', 'gitflow.branch.main', config.main]).catch(asThrow)
+    await this.run(['config', 'gitflow.branch.develop', config.develop]).catch(asThrow)
+    // Create develop off main if it does not exist yet.
+    const has = await this.resolveOid(config.develop)
+    if (!has) {
+      const base = (await this.resolveOid(config.main)) ? config.main : 'HEAD'
+      await this.run(['branch', config.develop, base]).catch(asThrow)
+    }
+  }
+
+  async gitflowStart(kind: GitFlowKind, name: string): Promise<void> {
+    const { develop, main } = await this.gitflowStatus()
+    const base = kind === 'hotfix' ? main : develop
+    const branch = flowBranchName(kind, name)
+    // Branch from the base and switch to it (create -c is checkout+create).
+    await this.run(['switch', '-c', branch, base]).catch(asThrow)
+  }
+
+  async gitflowFinish(kind: GitFlowKind, name: string): Promise<void> {
+    const status = await this.gitflowStatus()
+    const branch = flowBranchName(kind, name)
+    if (!(await this.resolveOid(branch))) {
+      throw new AppError('git', `flow branch ${branch} does not exist`)
+    }
+    const { mergeInto, tag } = finishTargets(kind, status)
+
+    for (const target of mergeInto) {
+      await this.run(['switch', target]).catch(asThrow)
+      // --no-ff keeps the flow branch visible as a merge bubble.
+      await this.run(['merge', '--no-ff', '--no-edit', branch]).catch(asThrow)
+      // Tag the release/hotfix on the production branch.
+      if (tag && target === status.main) {
+        await this.run(['tag', '-a', name, '-m', `${kind} ${name}`]).catch(asThrow)
+      }
+    }
+    await this.run(['branch', '-d', branch]).catch(asThrow)
+  }
+
+  // ── worktrees & submodules ──
+
+  async worktrees(): Promise<WorktreeInfo[]> {
+    const out = await this.run(['worktree', 'list', '--porcelain']).catch(asThrow)
+    return parseWorktreeList(out)
+  }
+
+  async worktreeAdd(path: string, ref: string): Promise<void> {
+    const args = ['worktree', 'add', path]
+    if (ref) args.push(ref)
+    await this.run(args).catch(asThrow)
+  }
+
+  async worktreeRemove(path: string, force: boolean): Promise<void> {
+    const args = ['worktree', 'remove']
+    if (force) args.push('--force')
+    args.push(path)
+    await this.run(args).catch(asThrow)
+  }
+
+  async submodules(): Promise<SubmoduleInfo[]> {
+    const out = await this.run(['submodule', 'status']).catch(() => '')
+    return parseSubmoduleStatus(out)
+  }
+
+  async submoduleUpdate(): Promise<void> {
+    await this.run(['submodule', 'update', '--init', '--recursive']).catch(asThrow)
+  }
+
+  async stagedDiff(): Promise<{ patch: string; stat: string }> {
+    const [patch, stat] = await Promise.all([
+      this.run(['diff', '--cached', '--no-color']).catch(() => ''),
+      this.run(['diff', '--cached', '--stat']).catch(() => '')
+    ])
+    return { patch, stat }
   }
 
   workdir(): string | null {

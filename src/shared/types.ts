@@ -287,6 +287,42 @@ export interface GitApi {
 
   // M2 — long-op progress (rebase steps, etc.)
   onOpProgress(cb: (p: OpProgress) => void): () => void
+
+  // M3 — blame & file history
+  blame(path: string): Promise<BlameLine[]>
+  fileHistory(path: string, limit?: number): Promise<FileHistoryEntry[]>
+  /** Diff a single file introduced by a commit (for the file-history viewer). */
+  fileHistoryDiff(oid: string, path: string): Promise<FileDiff>
+
+  // M3 — GitHub (token/keys never cross the bridge; only DTOs do)
+  githubAuthState(): Promise<GitHubAuthState>
+  /** Request a device code; main begins the flow but does not poll yet. */
+  githubStartDeviceFlow(): Promise<GitHubDeviceCode>
+  /** Poll until the user authorizes (or the code expires); stores the token. */
+  githubAwaitAuth(): Promise<GitHubAuthState>
+  githubSignOut(): Promise<void>
+  githubListPulls(): Promise<PullRequest[]>
+  githubListIssues(): Promise<Issue[]>
+  githubCreatePull(input: PullRequestInput): Promise<PullRequest>
+
+  // M3 — AI commit messages (key + SDK stay in main)
+  aiConfig(): Promise<AiConfig>
+  aiSetConfig(input: AiConfigInput): Promise<AiConfig>
+  aiSetKey(provider: AiProviderId, key: string): Promise<void>
+  aiGenerateCommitMessage(): Promise<AiResult>
+
+  // M3 — GitFlow
+  gitflowStatus(): Promise<GitFlowStatus>
+  gitflowInit(config: GitFlowConfig): Promise<void>
+  gitflowStart(kind: GitFlowKind, name: string): Promise<void>
+  gitflowFinish(kind: GitFlowKind, name: string): Promise<void>
+
+  // M3 — worktrees & submodules
+  worktrees(): Promise<WorktreeInfo[]>
+  worktreeAdd(path: string, ref: string): Promise<void>
+  worktreeRemove(path: string, force: boolean): Promise<void>
+  submodules(): Promise<SubmoduleInfo[]>
+  submoduleUpdate(): Promise<void>
 }
 
 // ───────────────────────────── M2 additions ─────────────────────────────
@@ -366,4 +402,145 @@ export interface AuthInfo {
 export interface OpProgress {
   raw: string
   done: boolean
+}
+
+// ───────────────────────────── M3 additions ─────────────────────────────
+// M3 DTOs; camelCase on the wire.
+
+/** One line's blame attribution (parsed from `git blame --porcelain`). */
+export interface BlameLine {
+  /** 1-based line number in the final file. */
+  line: number
+  oid: string
+  shortOid: string
+  author: string
+  /** Author time, seconds since the Unix epoch. */
+  timeUnix: number
+  summary: string
+  /** The line's text content. */
+  content: string
+}
+
+/** One revision in a file's history (`git log --follow`). */
+export interface FileHistoryEntry {
+  oid: string
+  shortOid: string
+  summary: string
+  authorName: string
+  timeUnix: number
+  /** The file's path at this revision (follows renames). */
+  path: string
+}
+
+// ── GitHub ──
+
+/** Whether a GitHub session exists; the token never crosses the bridge. */
+export interface GitHubAuthState {
+  signedIn: boolean
+  /** The authenticated user's login, when signed in. */
+  login: string | null
+}
+
+/** The user-facing half of an OAuth device-flow grant. */
+export interface GitHubDeviceCode {
+  userCode: string
+  verificationUri: string
+  /** Seconds until the code expires. */
+  expiresIn: number
+  /** Minimum seconds between poll attempts. */
+  interval: number
+}
+
+export interface PullRequest {
+  number: number
+  title: string
+  author: string
+  state: string
+  url: string
+  headRef: string
+  baseRef: string
+  draft: boolean
+}
+
+export interface Issue {
+  number: number
+  title: string
+  author: string
+  state: string
+  url: string
+}
+
+export interface PullRequestInput {
+  title: string
+  body: string
+  /** Base branch (e.g. "main"). */
+  base: string
+  /** Head branch; defaults to the current branch when empty. */
+  head: string
+}
+
+// ── AI commit messages ──
+
+export type AiProviderId = 'anthropic' | 'ollama'
+
+/** Current AI settings the renderer may read (never the key itself). */
+export interface AiConfig {
+  enabled: boolean
+  provider: AiProviderId
+  model: string
+  /** Whether a key is stored for the active provider (anthropic). */
+  hasKey: boolean
+}
+
+export interface AiConfigInput {
+  enabled?: boolean
+  provider?: AiProviderId
+  model?: string
+}
+
+export interface AiResult {
+  message: string
+  /** True when the staged diff was too large and was reduced to a stat summary. */
+  truncated: boolean
+}
+
+// ── GitFlow ──
+
+export type GitFlowKind = 'feature' | 'release' | 'hotfix'
+
+export interface GitFlowConfig {
+  /** Integration branch (default "develop"). */
+  develop: string
+  /** Production branch (default "main"). */
+  main: string
+}
+
+export interface GitFlowStatus {
+  initialized: boolean
+  develop: string
+  main: string
+  /** The active flow branch, if the current branch is one. */
+  current: { kind: GitFlowKind; name: string } | null
+}
+
+// ── Worktrees & submodules ──
+
+export interface WorktreeInfo {
+  path: string
+  /** Short branch name, or null when detached. */
+  branch: string | null
+  head: string
+  isBare: boolean
+  /** The main working tree (cannot be removed). */
+  isMain: boolean
+  locked: boolean
+}
+
+export interface SubmoduleInfo {
+  path: string
+  head: string
+  /** `git describe` of the submodule HEAD, when available. */
+  describe: string | null
+  /** ' ' up-to-date · '-' uninitialized · '+' out-of-date · 'U' conflict. */
+  status: 'upToDate' | 'uninitialized' | 'outOfDate' | 'conflict'
 }

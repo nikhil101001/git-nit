@@ -1,7 +1,12 @@
 // Auth — store an HTTPS token per host with Electron `safeStorage` (OS-keychain
 // backed), and bridge it to the system `git` via `GIT_ASKPASS`. SSH and existing
 // OS credential helpers are left to git itself (the engine already shells to it).
-// The token never crosses the contextBridge — only `hasToken` does. OAuth is M3.
+// The token never crosses the contextBridge — only `hasToken` does.
+//
+// M3 reuses the same safeStorage mechanism for app-level secrets (the GitHub
+// OAuth token, the Anthropic API key) via the generic secret store below. Every
+// secret lives only in this process; the renderer only ever learns whether one
+// exists, never its value.
 
 import { app, safeStorage } from 'electron'
 import { join } from 'node:path'
@@ -9,26 +14,42 @@ import { existsSync, readFileSync, writeFileSync, chmodSync } from 'node:fs'
 
 import type { AuthInfo } from '../shared/types'
 
-type Store = Record<string, string> // host -> base64(encrypted token)
+type Store = Record<string, string> // key -> base64(encrypted value)
 
-const file = (): string => join(app.getPath('userData'), 'credentials.json')
-
-function load(): Store {
+/** Encrypt a value with safeStorage, falling back to plain base64 when no OS
+ *  keyring is available (e.g. headless Linux) — never store cleartext on disk. */
+function encrypt(value: string): string {
+  return safeStorage.isEncryptionAvailable()
+    ? safeStorage.encryptString(value).toString('base64')
+    : Buffer.from(value).toString('base64')
+}
+function decrypt(enc: string): string | null {
+  const buf = Buffer.from(enc, 'base64')
   try {
-    return JSON.parse(readFileSync(file(), 'utf8')) as Store
+    return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(buf) : buf.toString('utf8')
+  } catch {
+    return null
+  }
+}
+
+function loadFrom(path: string): Store {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as Store
   } catch {
     return {}
   }
 }
-function save(s: Store): void {
-  writeFileSync(file(), JSON.stringify(s), { mode: 0o600 })
+function saveTo(path: string, s: Store): void {
+  writeFileSync(path, JSON.stringify(s), { mode: 0o600 })
 }
+
+const file = (): string => join(app.getPath('userData'), 'credentials.json')
+const load = (): Store => loadFrom(file())
+const save = (s: Store): void => saveTo(file(), s)
 
 export function setToken(host: string, token: string): void {
   const s = load()
-  s[host] = safeStorage.isEncryptionAvailable()
-    ? safeStorage.encryptString(token).toString('base64')
-    : Buffer.from(token).toString('base64') // fallback: not encrypted (no keyring)
+  s[host] = encrypt(token)
   save(s)
 }
 
@@ -40,13 +61,32 @@ export function clearToken(host: string): void {
 
 function getToken(host: string): string | null {
   const enc = load()[host]
-  if (!enc) return null
-  const buf = Buffer.from(enc, 'base64')
-  try {
-    return safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(buf) : buf.toString('utf8')
-  } catch {
-    return null
-  }
+  return enc ? decrypt(enc) : null
+}
+
+// ── Generic app-secret store (M3): GitHub token, Anthropic key, … ──
+const secretsFile = (): string => join(app.getPath('userData'), 'secrets.json')
+
+/** Store an app secret by name (encrypted). Empty value clears it. */
+export function setSecret(name: string, value: string): void {
+  const s = loadFrom(secretsFile())
+  if (value) s[name] = encrypt(value)
+  else delete s[name]
+  saveTo(secretsFile(), s)
+}
+
+/** Read an app secret (decrypted), or null if unset. Stays in this process. */
+export function getSecret(name: string): string | null {
+  const enc = loadFrom(secretsFile())[name]
+  return enc ? decrypt(enc) : null
+}
+
+export function hasSecret(name: string): boolean {
+  return Boolean(loadFrom(secretsFile())[name])
+}
+
+export function clearSecret(name: string): void {
+  setSecret(name, '')
 }
 
 export function authInfo(): AuthInfo[] {

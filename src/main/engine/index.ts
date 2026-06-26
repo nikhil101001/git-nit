@@ -12,11 +12,16 @@
 // swap is invisible to callers.
 
 import type {
+  BlameLine,
   BranchInfo,
   CommitInput,
   CommitPage,
   ConflictFile,
   FileDiff,
+  FileHistoryEntry,
+  GitFlowConfig,
+  GitFlowKind,
+  GitFlowStatus,
   GraphFilters,
   GraphPage,
   HeadInfo,
@@ -26,8 +31,10 @@ import type {
   ResetMode,
   StageSelection,
   StashEntry,
+  SubmoduleInfo,
   TagInput,
-  WorkingStatus
+  WorkingStatus,
+  WorktreeInfo
 } from '../../shared/types'
 
 export interface GitEngine {
@@ -110,6 +117,30 @@ export interface GitEngine {
   setBranchRef(branch: string, oid: string): Promise<void>
   /** The `origin` remote URL, or null if unset (used to pick an auth token). */
   originUrl(): Promise<string | null>
+
+  // ── M3 — blame & file history ──
+  /** Per-line attribution for `path` (git blame --porcelain). */
+  blame(path: string): Promise<BlameLine[]>
+  /** Revisions touching `path`, newest→oldest, following renames. */
+  fileHistory(path: string, limit: number): Promise<FileHistoryEntry[]>
+  /** The diff a single commit introduced for `path` (file-history viewer). */
+  fileHistoryDiff(oid: string, path: string): Promise<FileDiff>
+
+  // ── M3 — GitFlow (branch conventions driven directly on git) ──
+  gitflowStatus(): Promise<GitFlowStatus>
+  gitflowInit(config: GitFlowConfig): Promise<void>
+  gitflowStart(kind: GitFlowKind, name: string): Promise<void>
+  gitflowFinish(kind: GitFlowKind, name: string): Promise<void>
+
+  // ── M3 — worktrees & submodules ──
+  worktrees(): Promise<WorktreeInfo[]>
+  worktreeAdd(path: string, ref: string): Promise<void>
+  worktreeRemove(path: string, force: boolean): Promise<void>
+  submodules(): Promise<SubmoduleInfo[]>
+  submoduleUpdate(): Promise<void>
+
+  /** Raw staged diff text + its --stat summary (input for AI commit messages). */
+  stagedDiff(): Promise<{ patch: string; stat: string }>
 
   /** Absolute working-directory path; null if bare. */
   workdir(): string | null
