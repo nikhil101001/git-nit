@@ -3,12 +3,13 @@
 A GitKraken-style, cross-platform **Git GUI** built on Electron + React. See
 [SPEC.md](SPEC.md) for the full product spec.
 
-**Status:** M2 — daily driver. Boots, opens a repo, reads HEAD, lists branches and a
-laned commit graph, stages/commits (hunk- and line-level), fetch/pull/push with
+**Status:** M3 — power & polish (landed). Boots, opens a repo, reads HEAD, lists branches
+and a laned commit graph, stages/commits (hunk- and line-level), fetch/pull/push with
 per-host auth, merge / rebase / interactive rebase / cherry-pick / revert / reset,
 a 3-way Monaco conflict editor, stash, tags, and undo/redo — auto-refreshing on
-filesystem changes. M3 (GitHub integration, blame, GitFlow, AI commit messages) is
-planned.
+filesystem changes. M3 adds GitHub integration (PRs/issues/device-flow), blame & file
+history, GitFlow, worktrees, command palette, theming, and AI commit messages. M4
+(hardening + the GitKraken-layout UI migration in [SPEC.md](SPEC.md) §1.1) is next.
 
 ## Stack
 

@@ -19,3 +19,6 @@ dist/
 
 # Local planning / thinking notes (not shipped)
 thoughts/
+
+# Spec (not shipped)
+SPEC.md
