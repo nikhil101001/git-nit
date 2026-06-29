@@ -1,0 +1,48 @@
+# Release pipeline (M5.1/M5.2/M5.3): on a v* tag, build + sign + notarize +
+# publish installers to GitHub Releases (the electron-updater feed) across the
+# three OSes. Signing is gated on repo secrets — without them the build still
+# produces UNSIGNED installers (notarization is skipped).
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - name: Build, sign, notarize, publish
+        run: pnpm release
+        env:
+          # GitHub Releases (electron-builder publish provider)
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS code signing (Developer ID Application .p12) + notarization
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Authenticode signing
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}

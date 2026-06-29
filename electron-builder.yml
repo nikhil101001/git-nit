@@ -1,0 +1,53 @@
+# Packaging (M5.1) — installers for macOS / Windows / Linux, published to GitHub
+# Releases (the electron-updater feed). Code signing + notarization (M5.2) run in
+# CI from secrets (CSC_LINK / CSC_KEY_PASSWORD, APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD
+# / APPLE_TEAM_ID, WIN_CSC_*). Local `pnpm dist` builds unsigned installers.
+appId: dev.gitnit.app
+productName: git-nit
+copyright: © git-nit
+
+directories:
+  output: release
+  buildResources: build
+
+# Keep out/ + production node_modules (the externalized main/preload deps:
+# electron-updater, @anthropic-ai/sdk, …); exclude source + dev config. (A
+# bundled git sidecar would go under extraResources — flagged decision, not done.)
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!electron-builder.yml'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml,vitest.config.ts}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{test,thoughts,.github,build}/**'
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip # zip is required by electron-updater on macOS
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: true # uses APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID in CI
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  category: Development
+  target:
+    - AppImage
+    - deb
+
+publish:
+  provider: github
+  owner: nikhil101001
+  repo: git-nit
