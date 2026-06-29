@@ -9,6 +9,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { RefBadge } from '../../../shared/types'
 import { useGraph } from '../graph-store'
 import { useUi } from '../ui-store'
+import { useStatus } from '../status-store'
 import { relTime } from '../time'
 
 const ROW_H = 28
@@ -43,6 +44,9 @@ export default function GraphCanvas(): React.JSX.Element {
   const select = useGraph((s) => s.select)
   const loadMore = useGraph((s) => s.loadMore)
   const setFilters = useGraph((s) => s.setFilters)
+  const status = useStatus((s) => s.status)
+  const changes =
+    (status?.staged.length ?? 0) + (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -147,6 +151,20 @@ export default function GraphCanvas(): React.JSX.Element {
           Current branch only
         </label>
       </div>
+
+      {/* WIP node — uncommitted changes as the top node of the graph (§1.1).
+          Selecting it = working mode (selectedOid === null → Staging panel). */}
+      <button
+        className={`wip-node${selectedOid === null ? ' selected' : ''}`}
+        onClick={() => select(null)}
+        title="Uncommitted changes"
+      >
+        <span className="wip-dot">✎</span>
+        <span className="wip-label">
+          {changes > 0 ? 'Uncommitted changes' : 'Working directory — clean'}
+        </span>
+        {changes > 0 && <span className="wip-count">{changes}</span>}
+      </button>
 
       <div className="graph-scroll" ref={scrollRef} onScroll={onScroll}>
         <div className="graph-inner" style={{ height: rows.length * ROW_H }}>

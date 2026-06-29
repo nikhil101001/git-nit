@@ -45,9 +45,9 @@ export default function GitFlowMenu(): React.JSX.Element | null {
   }
 
   return (
-    <div className="modal-overlay" onMouseDown={close}>
-      <div className="small-modal flow-modal" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-head">GitFlow</div>
+    <div className="popover-overlay" onMouseDown={close}>
+      <div className="popover flow-popover" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="popover-head">GitFlow</div>
         {error && <div className="banner error">{error}</div>}
 
         {!status?.initialized ? (
