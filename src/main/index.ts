@@ -11,6 +11,8 @@ import { join } from 'node:path'
 
 import { registerIpc } from './ipc'
 import { state } from './state'
+import { initLogging } from './logging'
+import { checkForUpdate, initUpdater } from './updater'
 
 // In production (file:// load) lock the renderer down with a strict CSP: only
 // our own bundled scripts, no remote content, no eval. (Skipped in dev, where
@@ -52,6 +54,12 @@ function createWindow(): void {
 
   win.once('ready-to-show', () => win.show())
 
+  // Auto-update (M5.3): wire once the renderer is up, then check (no-op in dev).
+  win.webContents.once('did-finish-load', () => {
+    initUpdater(win.webContents)
+    void checkForUpdate()
+  })
+
   // Open target=_blank / window.open links in the OS browser, never in-app.
   win.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)
@@ -67,6 +75,8 @@ function createWindow(): void {
     void win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+initLogging() // capture uncaught main-process errors to userData/logs
 
 app.whenReady().then(() => {
   applyProdCsp()
