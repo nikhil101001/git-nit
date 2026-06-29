@@ -112,10 +112,16 @@ function parseCommitRecords(out: string): CommitSummary[] {
 
 /** Coerce a failed `git` invocation into a typed AppError. Detects the
  *  unconfigured-identity case so the commit path can surface it cleanly. */
+const IDENT_RE = /empty ident|tell me who you are|user\.(name|email)/i
+const SIGN_RE = /gpg failed to sign|failed to sign the data|no secret key|signing failed|error: cannot (?:run|sign)|unable to sign/i
+
 function asGitError(e: unknown): AppError {
   if (e instanceof AppError) {
-    if (e.kind === 'git' && /empty ident|tell me who you are|user\.(name|email)/i.test(e.message)) {
+    if (e.kind === 'git' && IDENT_RE.test(e.message)) {
       return new AppError('identityUnset', 'git identity (user.name / user.email) is not configured')
+    }
+    if (e.kind === 'git' && SIGN_RE.test(e.message)) {
+      return new AppError('signing', 'commit signing failed — check your signing key and gpg.format')
     }
     return e
   }
@@ -125,8 +131,11 @@ function asGitError(e: unknown): AppError {
     : e instanceof Error
       ? e.message
       : String(e)
-  if (/empty ident|tell me who you are|user\.(name|email)/i.test(message)) {
+  if (IDENT_RE.test(message)) {
     return new AppError('identityUnset', 'git identity (user.name / user.email) is not configured')
+  }
+  if (SIGN_RE.test(message)) {
+    return new AppError('signing', 'commit signing failed — check your signing key and gpg.format')
   }
   return new AppError('git', message)
 }
@@ -517,8 +526,41 @@ export class CliEngine implements GitEngine {
   // ──────────────────────────── M1: commit ────────────────────────────
 
   async commit(input: CommitInput): Promise<void> {
-    const args = input.amend ? ['commit', '--amend', '-F', '-'] : ['commit', '-F', '-']
-    await gitWithInput(this.workdirPath ?? this.gitDirPath, args, input.message).catch(asThrow)
+    // sign: true → force -S, false → --no-gpg-sign, undefined → respect git config.
+    const sign = input.sign === true ? ['-S'] : input.sign === false ? ['--no-gpg-sign'] : []
+    const args = input.amend
+      ? ['commit', '--amend', ...sign, '-F', '-']
+      : ['commit', ...sign, '-F', '-']
+    try {
+      await gitWithInput(this.workdirPath ?? this.gitDirPath, args, input.message)
+    } catch (e) {
+      const err = asGitError(e)
+      // A failure on an explicitly-signed commit is almost always a signing
+      // problem (no key, locked key, bad gpg.format) — map it for the UI.
+      if (
+        input.sign === true &&
+        err.kind === 'git' &&
+        /sign|signingkey|gpg|ssh|secret key|needs to be configured/i.test(err.message)
+      ) {
+        throw new AppError('signing', 'commit signing failed — check your signing key and gpg.format')
+      }
+      throw err
+    }
+  }
+
+  // ── M5: commit signing ──
+
+  async commitSignDefault(): Promise<boolean> {
+    return this.run(['config', '--get', 'commit.gpgsign'])
+      .then((s) => s.trim() === 'true')
+      .catch(() => false)
+  }
+
+  async commitSignature(oid: string): Promise<string> {
+    // %G? : G good · B bad · U good-unknown · X/Y expired · R revoked · E error · N none.
+    return this.run(['log', '-1', '--format=%G?', oid])
+      .then((s) => s.trim() || 'N')
+      .catch(() => 'N')
   }
 
   // ─────────────────────────── M1: branching ───────────────────────────

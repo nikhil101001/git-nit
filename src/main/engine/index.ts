@@ -73,6 +73,10 @@ export interface GitEngine {
   // ── M1 — commit ──
   commit(input: CommitInput): Promise<void>
 
+  // ── M5 — commit signing ──
+  commitSignDefault(): Promise<boolean>
+  commitSignature(oid: string): Promise<string>
+
   // ── M1 — branching ──
   createBranch(name: string, startPoint?: string): Promise<void>
   checkoutBranch(name: string): Promise<void>

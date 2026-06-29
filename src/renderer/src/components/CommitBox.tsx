@@ -8,6 +8,7 @@ import { useStatus } from '../status-store'
 import { useAi } from '../ai-store'
 import { useUi } from '../ui-store'
 import * as actions from '../actions'
+import * as ipc from '../ipc'
 
 export default function CommitBox(): React.JSX.Element {
   const stagedCount = useStatus((s) => s.status?.staged.length ?? 0)
@@ -16,10 +17,14 @@ export default function CommitBox(): React.JSX.Element {
   const truncated = useAi((s) => s.lastTruncated)
   const [message, setMessage] = useState('')
   const [amend, setAmend] = useState(false)
+  const [sign, setSign] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  // Load AI config once so the button visibility is correct.
-  useEffect(() => void useAi.getState().refresh(), [])
+  // Load AI config + the repo's signing default once.
+  useEffect(() => {
+    void useAi.getState().refresh()
+    void ipc.commitSignDefault().then(setSign).catch(() => {})
+  }, [])
 
   const canCommit = message.trim() !== '' && (stagedCount > 0 || amend) && !busy
 
@@ -27,7 +32,7 @@ export default function CommitBox(): React.JSX.Element {
     if (!canCommit) return
     setBusy(true)
     try {
-      await actions.commit({ message, amend })
+      await actions.commit({ message, amend, sign })
       setMessage('')
       setAmend(false)
     } finally {
@@ -56,6 +61,10 @@ export default function CommitBox(): React.JSX.Element {
         <label>
           <input type="checkbox" checked={amend} onChange={(e) => setAmend(e.target.checked)} />
           Amend
+        </label>
+        <label title="Sign this commit (GPG/SSH per git config)">
+          <input type="checkbox" checked={sign} onChange={(e) => setSign(e.target.checked)} />
+          Sign
         </label>
         {truncated && <span className="muted ai-trunc" title="Diff was large — summarized">stat-summarized</span>}
         {aiEnabled && (stagedCount > 0 || amend) && (

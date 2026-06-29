@@ -10,6 +10,7 @@ export type ErrorKind =
   | 'git'
   | 'gitNotFound'
   | 'identityUnset'
+  | 'signing'
   | 'conflict'
   | 'authFailed'
   | 'io'
