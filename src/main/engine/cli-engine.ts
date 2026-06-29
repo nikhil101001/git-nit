@@ -40,6 +40,7 @@ import type {
   StatusEntry,
   SubmoduleInfo,
   TagInput,
+  TagRef,
   WorkingStatus,
   WorktreeInfo
 } from '../../shared/types'
@@ -800,6 +801,24 @@ export class CliEngine implements GitEngine {
 
   async tagPush(name: string | null): Promise<void> {
     await this.run(['push', 'origin', name ?? '--tags']).catch(asThrow)
+  }
+
+  async listTags(): Promise<TagRef[]> {
+    // %(*objectname) peels annotated tags to the commit; lightweight tags use objectname.
+    const fmt = ['%(refname:short)', '%(objectname)', '%(*objectname)'].join(US)
+    const out = await this.run([
+      'for-each-ref',
+      `--format=${fmt}`,
+      '--sort=-creatordate',
+      'refs/tags'
+    ]).catch(() => '')
+    const tags: TagRef[] = []
+    for (const line of out.split('\n')) {
+      if (line === '') continue
+      const [name, objectname, peeled] = line.split(US)
+      tags.push({ name, target: peeled || objectname })
+    }
+    return tags
   }
 
   // ── undo primitives ──

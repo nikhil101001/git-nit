@@ -38,6 +38,7 @@ import type {
   SubmoduleInfo,
   SyncProgress,
   TagInput,
+  TagRef,
   UndoState,
   WorkingStatus,
   WorktreeInfo
@@ -127,6 +128,7 @@ export const stashDrop = (index: number): Promise<void> => window.api.stashDrop(
 export const tagCreate = (input: TagInput): Promise<void> => window.api.tagCreate(input)
 export const tagDelete = (name: string): Promise<void> => window.api.tagDelete(name)
 export const tagPush = (name: string | null): Promise<void> => window.api.tagPush(name)
+export const listTags = (): Promise<TagRef[]> => window.api.listTags()
 
 // M2 — auth
 export const authInfo = (): Promise<AuthInfo[]> => window.api.authInfo()

@@ -303,6 +303,7 @@ export function registerIpc(): void {
   handle('repo:tagPush', async (_e, name) =>
     requireEngine().tagPush(typeof name === 'string' && name !== '' ? name : null)
   )
+  handle('repo:tagList', async () => requireEngine().listTags())
 
   // ── M2: auth (token never leaves the main process) ──
   handle('repo:authInfo', async () => auth.authInfo())

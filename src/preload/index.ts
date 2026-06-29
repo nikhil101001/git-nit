@@ -45,6 +45,7 @@ import type {
   SubmoduleInfo,
   SyncProgress,
   TagInput,
+  TagRef,
   UndoState,
   WorkingStatus,
   WorktreeInfo
@@ -136,6 +137,7 @@ const api: GitApi = {
   tagCreate: (input: TagInput) => invoke<void>('repo:tagCreate', input),
   tagDelete: (name) => invoke<void>('repo:tagDelete', name),
   tagPush: (name) => invoke<void>('repo:tagPush', name),
+  listTags: () => invoke<TagRef[]>('repo:tagList'),
 
   // M2 — auth
   authInfo: () => invoke<AuthInfo[]>('repo:authInfo'),

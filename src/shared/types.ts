@@ -279,6 +279,8 @@ export interface GitApi {
   tagDelete(name: string): Promise<void>
   /** Push one tag, or all tags when name is null. */
   tagPush(name: string | null): Promise<void>
+  /** List all tags (for the M4 sidebar Tags section). */
+  listTags(): Promise<TagRef[]>
 
   // M2 — auth (the token itself never crosses the bridge)
   authInfo(): Promise<AuthInfo[]>
@@ -386,6 +388,12 @@ export interface TagInput {
   message?: string
   /** Target commit-ish; defaults to HEAD. */
   target?: string
+}
+
+/** A tag and the commit oid it points at (annotated tags resolve to the commit). */
+export interface TagRef {
+  name: string
+  target: string
 }
 
 export type ResetMode = 'soft' | 'mixed' | 'hard'

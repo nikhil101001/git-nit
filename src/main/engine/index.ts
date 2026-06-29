@@ -33,6 +33,7 @@ import type {
   StashEntry,
   SubmoduleInfo,
   TagInput,
+  TagRef,
   WorkingStatus,
   WorktreeInfo
 } from '../../shared/types'
@@ -110,6 +111,7 @@ export interface GitEngine {
   tagDelete(name: string): Promise<void>
   /** Push one tag, or all tags when name is null. */
   tagPush(name: string | null): Promise<void>
+  listTags(): Promise<TagRef[]>
 
   /** Resolve a ref/commit-ish to a full oid (used by the undo snapshotter). */
   resolveOid(rev: string): Promise<string | null>
