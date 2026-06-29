@@ -5,6 +5,7 @@ import { useGraph } from './graph-store'
 import { useUi } from './ui-store'
 import { useStatus } from './status-store'
 import { useLayout } from './layout-store'
+import { useHistory } from './history-store'
 import { onRefresh } from './ipc'
 import * as actions from './actions'
 import ResizeHandle from './components/ResizeHandle'
@@ -12,24 +13,21 @@ import WelcomePage from './components/WelcomePage'
 import Toolbar from './components/Toolbar'
 import HeadBar from './components/HeadBar'
 import OpBanner from './components/OpBanner'
-import BranchList from './components/BranchList'
+import SidebarTree from './components/SidebarTree'
 import GraphCanvas from './components/GraphCanvas'
 import CommitDetail from './components/CommitDetail'
 import WorkingArea from './components/WorkingArea'
 import DiffView from './components/DiffView'
 import ConflictEditor from './components/ConflictEditor'
 import RebaseUI from './components/RebaseUI'
-import StashPanel from './components/StashPanel'
 import TagDialog from './components/TagDialog'
 import AuthDialog from './components/AuthDialog'
 import CommitContextMenu from './components/CommitContextMenu'
 import BlameView from './components/BlameView'
 import FileHistory from './components/FileHistory'
-import GitHubPanel from './components/GitHubPanel'
 import DeviceFlowDialog from './components/DeviceFlowDialog'
 import AiSettings from './components/AiSettings'
 import GitFlowMenu from './components/GitFlowMenu'
-import WorktreePanel from './components/WorktreePanel'
 import CommandPalette from './components/CommandPalette'
 
 export default function App(): React.JSX.Element {
@@ -39,10 +37,22 @@ export default function App(): React.JSX.Element {
   const fileSelected = useStatus((s) => s.selected !== null)
   const sidebarWidth = useLayout((s) => s.sidebarWidth)
   const rightWidth = useLayout((s) => s.rightWidth)
+  const blamePath = useHistory((s) => s.blamePath)
+  const historyPath = useHistory((s) => s.historyPath)
 
-  // Working-dir file diff takes over the center column (over the graph); a
-  // commit selection routes the right panel to CommitDetail instead.
+  // Center column: blame / file-history panes take over (§1.1), else the
+  // working-dir file diff, else the graph. A commit selection routes the right
+  // panel to CommitDetail.
   const showDiff = selectedOid === null && fileSelected
+  const center = blamePath ? (
+    <BlameView />
+  ) : historyPath ? (
+    <FileHistory />
+  ) : showDiff ? (
+    <DiffView />
+  ) : (
+    <GraphCanvas />
+  )
 
   // Re-fetch every view whenever the backend reports a filesystem change.
   useEffect(() => onRefresh(() => void actions.refreshAll()), [])
@@ -79,7 +89,7 @@ export default function App(): React.JSX.Element {
           <OpBanner />
           <div className="panes">
             <div className="pane-sidebar" style={{ width: sidebarWidth }}>
-              <BranchList />
+              <SidebarTree />
             </div>
             <ResizeHandle
               value={sidebarWidth}
@@ -88,7 +98,7 @@ export default function App(): React.JSX.Element {
               min={160}
               max={480}
             />
-            <div className="pane-center">{showDiff ? <DiffView /> : <GraphCanvas />}</div>
+            <div className="pane-center">{center}</div>
             <ResizeHandle
               value={rightWidth}
               onChange={useLayout.getState().setRightWidth}
@@ -105,20 +115,16 @@ export default function App(): React.JSX.Element {
         <WelcomePage />
       )}
 
-      {/* M2 overlays — each renders null unless active */}
+      {/* Overlays kept as modals/popovers — each renders null unless active.
+          (Stash / GitHub / worktree lists moved into the sidebar tree.) */}
       <ConflictEditor />
       <RebaseUI />
-      <StashPanel />
       <TagDialog />
       <AuthDialog />
       <CommitContextMenu />
-      <BlameView />
-      <FileHistory />
-      <GitHubPanel />
       <DeviceFlowDialog />
       <AiSettings />
       <GitFlowMenu />
-      <WorktreePanel />
       <CommandPalette />
     </main>
   )
