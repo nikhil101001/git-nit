@@ -180,7 +180,16 @@ export default function GraphCanvas(): React.JSX.Element {
                 key={r.oid}
                 className={`graph-row${r.oid === selectedOid ? ' selected' : ''}`}
                 style={{ top: i * ROW_H, height: ROW_H, paddingLeft: gutterW }}
+                role="button"
+                tabIndex={0}
+                aria-label={`${r.summary || 'no message'} — ${r.authorName}, ${r.shortOid}`}
                 onClick={() => select(r.oid)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    select(r.oid)
+                  }
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault()
                   useUi.getState().openContext({

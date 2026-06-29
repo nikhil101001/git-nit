@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import { useRepo } from './store'
 import { useGraph } from './graph-store'
@@ -6,7 +6,8 @@ import { useUi } from './ui-store'
 import { useStatus } from './status-store'
 import { useLayout } from './layout-store'
 import { useHistory } from './history-store'
-import { onRefresh } from './ipc'
+import type { GitInfo } from '../../shared/types'
+import { onRefresh, gitInfo } from './ipc'
 import * as actions from './actions'
 import ResizeHandle from './components/ResizeHandle'
 import WelcomePage from './components/WelcomePage'
@@ -29,10 +30,12 @@ import DeviceFlowDialog from './components/DeviceFlowDialog'
 import AiSettings from './components/AiSettings'
 import GitFlowMenu from './components/GitFlowMenu'
 import CommandPalette from './components/CommandPalette'
+import UpdateBanner from './components/UpdateBanner'
 
 export default function App(): React.JSX.Element {
   const repo = useRepo((s) => s.repo)
   const error = useRepo((s) => s.error)
+  const [git, setGit] = useState<GitInfo | null>(null)
   const selectedOid = useGraph((s) => s.selectedOid)
   const fileSelected = useStatus((s) => s.selected !== null)
   const sidebarWidth = useLayout((s) => s.sidebarWidth)
@@ -56,6 +59,9 @@ export default function App(): React.JSX.Element {
 
   // Re-fetch every view whenever the backend reports a filesystem change.
   useEffect(() => onRefresh(() => void actions.refreshAll()), [])
+
+  // Startup git-availability check (M5.6).
+  useEffect(() => void gitInfo().then(setGit).catch(() => {}), [])
 
   // Global ⌘K / Ctrl+K toggles the command palette.
   useEffect(() => {
@@ -81,6 +87,14 @@ export default function App(): React.JSX.Element {
         )}
       </header>
 
+      <UpdateBanner />
+      {git && !git.ok && (
+        <div className="banner error">
+          {git.present
+            ? `git ${git.version ?? '?'} is older than the required ${git.min} — please update git.`
+            : 'git was not found on your PATH — install git to use git-nit.'}
+        </div>
+      )}
       {error && <div className="banner error">{error}</div>}
 
       {repo ? (

@@ -188,6 +188,8 @@ export interface CommitInput {
   message: string
   /** Amend the tip commit instead of creating a new one. */
   amend: boolean
+  /** M5: true → force-sign (-S), false → force-unsigned, undefined → git config. */
+  sign?: boolean
 }
 
 /** Streamed progress for a fetch/pull/push, emitted on `repo://sync-progress`. */
@@ -231,6 +233,12 @@ export interface GitApi {
 
   // M1 — commit
   commit(input: CommitInput): Promise<void>
+
+  // M5 — commit signing
+  /** Whether commit.gpgsign is true in the repo's git config (toggle default). */
+  commitSignDefault(): Promise<boolean>
+  /** Signature status of a commit — git's %G? (G good · B bad · U/X/Y/R/E · N none). */
+  commitSignature(oid: string): Promise<string>
 
   // M1 — branching
   createBranch(name: string, startPoint?: string): Promise<void>
@@ -329,6 +337,15 @@ export interface GitApi {
   // M3 — recent repositories (welcome page)
   recentRepos(): Promise<RecentRepo[]>
   removeRecentRepo(path: string): Promise<RecentRepo[]>
+
+  // M5 — release hardening: git check, local logging, auto-update
+  gitInfo(): Promise<GitInfo>
+  logError(message: string): Promise<void>
+  revealLogs(): Promise<void>
+  updateState(): Promise<UpdateState>
+  checkForUpdate(): Promise<void>
+  quitAndInstall(): Promise<void>
+  onUpdate(cb: (s: UpdateState) => void): () => void
 }
 
 // ───────────────────────────── M2 additions ─────────────────────────────
@@ -555,6 +572,34 @@ export interface SubmoduleInfo {
   describe: string | null
   /** ' ' up-to-date · '-' uninitialized · '+' out-of-date · 'U' conflict. */
   status: 'upToDate' | 'uninitialized' | 'outOfDate' | 'conflict'
+}
+
+/** Result of the startup `git` availability/version check (M5). */
+export interface GitInfo {
+  present: boolean
+  /** Parsed git version (e.g. "2.39.3"), or null. */
+  version: string | null
+  /** present AND >= the minimum supported version. */
+  ok: boolean
+  min: string
+}
+
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'downloading'
+  | 'ready'
+  | 'none'
+  | 'error'
+
+/** Auto-update state streamed on `app://update` (M5). */
+export interface UpdateState {
+  status: UpdateStatus
+  version: string | null
+  message: string | null
+  /** Download progress 0–100 while downloading. */
+  percent: number | null
 }
 
 /** A previously-opened repository, for the welcome page's Recent list. */

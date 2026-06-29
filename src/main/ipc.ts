@@ -33,6 +33,9 @@ import * as auth from './auth'
 import * as github from './github'
 import * as ai from './ai'
 import * as recents from './recents'
+import { checkGit } from './gitcheck'
+import { logRendererError, revealLogs } from './logging'
+import { checkForUpdate, currentUpdateState, quitAndInstall } from './updater'
 
 function requireString(v: unknown, field: string): string {
   if (typeof v !== 'string' || v === '') {
@@ -150,17 +153,24 @@ export function registerIpc(): void {
 
   // ── M1: commit (undo-recorded) ──
   handle('repo:commit', async (_e, input) => {
-    const i = (input ?? {}) as { message?: unknown; amend?: unknown }
+    const i = (input ?? {}) as { message?: unknown; amend?: unknown; sign?: unknown }
     if (typeof i.message !== 'string' || i.message.trim() === '') {
       throw new AppError('git', 'commit message is required')
     }
     const engine = requireEngine()
     const amend = i.amend === true
     const message = i.message
+    const sign = typeof i.sign === 'boolean' ? i.sign : undefined
     await state.undo.record(engine, amend ? 'Amend' : 'Commit', () =>
-      engine.commit({ message, amend })
+      engine.commit({ message, amend, sign })
     )
   })
+
+  // ── M5: commit signing ──
+  handle('repo:signDefault', async () => requireEngine().commitSignDefault())
+  handle('repo:signature', async (_e, oid) =>
+    requireEngine().commitSignature(requireString(oid, 'oid'))
+  )
 
   // ── M1: branching ──
   handle('repo:branchCreate', async (_e, name, startPoint) =>
@@ -395,6 +405,16 @@ export function registerIpc(): void {
   )
   handle('repo:submodules', async () => requireEngine().submodules())
   handle('repo:submoduleUpdate', async () => requireEngine().submoduleUpdate())
+
+  // ── M5: release hardening (git check · logging · auto-update) ──
+  handle('app:gitInfo', async () => checkGit())
+  handle('app:logError', async (_e, message) => {
+    logRendererError(typeof message === 'string' ? message : String(message))
+  })
+  handle('app:revealLogs', async () => revealLogs())
+  handle('app:updateState', async () => currentUpdateState())
+  handle('app:checkUpdate', async () => checkForUpdate())
+  handle('app:quitInstall', async () => quitAndInstall())
 
   handle('dialog:pickDirectory', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender)

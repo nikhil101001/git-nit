@@ -15,6 +15,7 @@ import type {
   ConflictFile,
   FileDiff,
   FileHistoryEntry,
+  GitInfo,
   GitFlowConfig,
   GitFlowKind,
   GitFlowStatus,
@@ -40,6 +41,7 @@ import type {
   TagInput,
   TagRef,
   UndoState,
+  UpdateState,
   WorkingStatus,
   WorktreeInfo
 } from '../../shared/types'
@@ -73,6 +75,10 @@ export const discard = (sel: StageSelection): Promise<void> => window.api.discar
 
 // M1 — commit
 export const commit = (input: CommitInput): Promise<void> => window.api.commit(input)
+
+// M5 — commit signing
+export const commitSignDefault = (): Promise<boolean> => window.api.commitSignDefault()
+export const commitSignature = (oid: string): Promise<string> => window.api.commitSignature(oid)
 
 // M1 — branching
 export const createBranch = (name: string, startPoint?: string): Promise<void> =>
@@ -187,3 +193,12 @@ export const submoduleUpdate = (): Promise<void> => window.api.submoduleUpdate()
 export const recentRepos = (): Promise<RecentRepo[]> => window.api.recentRepos()
 export const removeRecentRepo = (path: string): Promise<RecentRepo[]> =>
   window.api.removeRecentRepo(path)
+
+// M5 — release hardening
+export const gitInfo = (): Promise<GitInfo> => window.api.gitInfo()
+export const logError = (message: string): Promise<void> => window.api.logError(message)
+export const revealLogs = (): Promise<void> => window.api.revealLogs()
+export const updateState = (): Promise<UpdateState> => window.api.updateState()
+export const checkForUpdate = (): Promise<void> => window.api.checkForUpdate()
+export const quitAndInstall = (): Promise<void> => window.api.quitAndInstall()
+export const onUpdate = (cb: (s: UpdateState) => void): (() => void) => window.api.onUpdate(cb)

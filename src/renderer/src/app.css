@@ -1745,3 +1745,56 @@ button.sb-row-main {
 }
 
 /* Syntax-highlighting palette moved to diff.css. */
+
+/* ════════════════════════ M5 ════════════════════════ */
+
+/* Commit signature badge (CommitDetail) */
+.sig-badge {
+  font-size: 0.7rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.sig-badge.sig-good {
+  color: var(--add);
+  border-color: color-mix(in srgb, var(--add) 50%, transparent);
+}
+.sig-badge.sig-bad {
+  color: var(--del);
+  border-color: color-mix(in srgb, var(--del) 50%, transparent);
+}
+.sig-badge.sig-warn {
+  color: #d19a66;
+  border-color: color-mix(in srgb, #d19a66 50%, transparent);
+}
+
+/* Auto-update banner (M5.3) */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.75rem;
+  background: color-mix(in srgb, var(--accent) 22%, var(--bg));
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.update-banner .spacer {
+  flex: 1;
+}
+
+/* Accessibility (M5.5) — visible focus ring on the dark theme + reduced motion */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

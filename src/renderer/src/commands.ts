@@ -2,6 +2,7 @@
 // action; file-scoped actions (blame, stage a hunk, …) stay in their own UI.
 
 import * as actions from './actions'
+import * as ipc from './ipc'
 import { useUi } from './ui-store'
 import { useTheme } from './theme-store'
 import { useSidebar } from './sidebar-store'
@@ -35,7 +36,9 @@ export function buildCommands(): Command[] {
     { id: 'ai', title: 'AI commit messages: settings…', run: () => ui.setShowAiSettings(true) },
     { id: 'theme-system', title: 'Theme: system', run: () => useTheme.getState().setTheme('system') },
     { id: 'theme-light', title: 'Theme: light', run: () => useTheme.getState().setTheme('light') },
-    { id: 'theme-dark', title: 'Theme: dark', run: () => useTheme.getState().setTheme('dark') }
+    { id: 'theme-dark', title: 'Theme: dark', run: () => useTheme.getState().setTheme('dark') },
+    { id: 'check-update', title: 'Check for updates', run: () => void ipc.checkForUpdate() },
+    { id: 'reveal-logs', title: 'Reveal error logs', run: () => void ipc.revealLogs() }
   ]
 }
 

@@ -36,10 +36,27 @@ export default function SidebarSection({
     if (!collapsed) onExpandRef.current?.()
   }, [collapsed])
 
+  const toggle = (): void => useSidebar.getState().toggle(id)
+
   return (
     <section className={`sb-section${collapsed ? ' collapsed' : ''}`}>
-      <header className="sb-head" onClick={() => useSidebar.getState().toggle(id)}>
-        <span className="sb-caret">{collapsed ? '▸' : '▾'}</span>
+      <header
+        className="sb-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        aria-label={`${title} section`}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            toggle()
+          }
+        }}
+      >
+        <span className="sb-caret" aria-hidden="true">
+          {collapsed ? '▸' : '▾'}
+        </span>
         <span className="sb-title">{title}</span>
         {count != null && count > 0 && <span className="sb-count">{count}</span>}
         {action && (

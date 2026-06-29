@@ -12,6 +12,15 @@ if (/Mac/i.test(navigator.platform || navigator.userAgent)) {
   document.documentElement.classList.add('is-mac')
 }
 
+// M5.6: forward uncaught renderer errors to the local log (nothing leaves the box).
+window.addEventListener('error', (e) => {
+  void window.api.logError(`error: ${e.message} (${e.filename}:${e.lineno})`)
+})
+window.addEventListener('unhandledrejection', (e) => {
+  const r = e.reason
+  void window.api.logError(`rejection: ${r instanceof Error ? (r.stack ?? r.message) : String(r)}`)
+})
+
 const container = document.getElementById('app')
 if (!container) throw new Error('#app root element not found')
 

@@ -21,6 +21,7 @@ import type {
   FileDiff,
   FileHistoryEntry,
   GitApi,
+  GitInfo,
   GitFlowConfig,
   GitFlowKind,
   GitFlowStatus,
@@ -47,6 +48,7 @@ import type {
   TagInput,
   TagRef,
   UndoState,
+  UpdateState,
   WorkingStatus,
   WorktreeInfo
 } from '../shared/types'
@@ -89,6 +91,10 @@ const api: GitApi = {
 
   // M1 — commit
   commit: (input: CommitInput) => invoke<void>('repo:commit', input),
+
+  // M5 — commit signing
+  commitSignDefault: () => invoke<boolean>('repo:signDefault'),
+  commitSignature: (oid) => invoke<string>('repo:signature', oid),
 
   // M1 — branching
   createBranch: (name, startPoint) => invoke<void>('repo:branchCreate', name, startPoint),
@@ -182,7 +188,16 @@ const api: GitApi = {
 
   // M3 — recent repositories
   recentRepos: () => invoke<RecentRepo[]>('repo:recents'),
-  removeRecentRepo: (path) => invoke<RecentRepo[]>('repo:recentsRemove', path)
+  removeRecentRepo: (path) => invoke<RecentRepo[]>('repo:recentsRemove', path),
+
+  // M5 — release hardening
+  gitInfo: () => invoke<GitInfo>('app:gitInfo'),
+  logError: (message) => invoke<void>('app:logError', message),
+  revealLogs: () => invoke<void>('app:revealLogs'),
+  updateState: () => invoke<UpdateState>('app:updateState'),
+  checkForUpdate: () => invoke<void>('app:checkUpdate'),
+  quitAndInstall: () => invoke<void>('app:quitInstall'),
+  onUpdate: (cb: (s: UpdateState) => void) => subscribe('app://update', cb)
 }
 
 contextBridge.exposeInMainWorld('api', api)
