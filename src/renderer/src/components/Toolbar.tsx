@@ -44,19 +44,11 @@ export default function Toolbar(): React.JSX.Element {
       <button disabled={!redoLabel} title={redoLabel ? `Redo: ${redoLabel}` : 'nothing to redo'} onClick={() => void actions.redo()}>
         ↷
       </button>
-      <button onClick={() => useUi.getState().setShowStash(true)}>Stash</button>
       <button title="HTTPS tokens" onClick={() => useUi.getState().setShowAuth(true)}>
         Tokens
       </button>
-      <span className="tb-sep" />
-      <button title="GitHub pull requests & issues" onClick={() => useUi.getState().setShowGitHub(true)}>
-        GitHub
-      </button>
       <button title="GitFlow" onClick={() => useUi.getState().setShowGitFlow(true)}>
         Flow
-      </button>
-      <button title="Worktrees & submodules" onClick={() => useUi.getState().setShowWorktrees(true)}>
-        Trees
       </button>
       <button title="Command palette (⌘K)" onClick={() => useUi.getState().setShowPalette(true)}>
         ⌘K

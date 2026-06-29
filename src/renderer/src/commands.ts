@@ -4,6 +4,8 @@
 import * as actions from './actions'
 import { useUi } from './ui-store'
 import { useTheme } from './theme-store'
+import { useSidebar } from './sidebar-store'
+import { useGraph } from './graph-store'
 
 export interface Command {
   id: string
@@ -13,6 +15,7 @@ export interface Command {
 
 export function buildCommands(): Command[] {
   const ui = useUi.getState()
+  const expand = useSidebar.getState().expand
   return [
     { id: 'open', title: 'Open repository…', run: () => void actions.pickAndOpen() },
     { id: 'fetch', title: 'Fetch', run: () => void actions.doFetch() },
@@ -21,11 +24,14 @@ export function buildCommands(): Command[] {
     { id: 'force-push', title: 'Force-push (with lease)', run: () => void actions.doForcePush() },
     { id: 'undo', title: 'Undo', run: () => void actions.undo() },
     { id: 'redo', title: 'Redo', run: () => void actions.redo() },
-    { id: 'stash', title: 'Stash…', run: () => ui.setShowStash(true) },
+    { id: 'wip', title: 'Select uncommitted changes (WIP)', run: () => useGraph.getState().select(null) },
+    { id: 'stash', title: 'Stashes (sidebar)', run: () => expand('stashes') },
+    { id: 'tag', title: 'New tag at HEAD…', run: () => ui.setTagFor('HEAD') },
+    { id: 'tags', title: 'Tags (sidebar)', run: () => expand('tags') },
     { id: 'tokens', title: 'HTTPS tokens…', run: () => ui.setShowAuth(true) },
-    { id: 'github', title: 'GitHub: pull requests & issues…', run: () => ui.setShowGitHub(true) },
+    { id: 'github', title: 'Pull requests & issues (sidebar)', run: () => expand('pulls') },
     { id: 'gitflow', title: 'GitFlow…', run: () => ui.setShowGitFlow(true) },
-    { id: 'worktrees', title: 'Worktrees & submodules…', run: () => ui.setShowWorktrees(true) },
+    { id: 'worktrees', title: 'Worktrees & submodules (sidebar)', run: () => expand('worktrees') },
     { id: 'ai', title: 'AI commit messages: settings…', run: () => ui.setShowAiSettings(true) },
     { id: 'theme-system', title: 'Theme: system', run: () => useTheme.getState().setTheme('system') },
     { id: 'theme-light', title: 'Theme: light', run: () => useTheme.getState().setTheme('light') },

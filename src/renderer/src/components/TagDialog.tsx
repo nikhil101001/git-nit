@@ -25,7 +25,7 @@ export default function TagDialog(): React.JSX.Element | null {
   return (
     <div className="modal-overlay" onMouseDown={close}>
       <div className="small-modal" onMouseDown={(e) => e.stopPropagation()}>
-        <header className="modal-head">Tag {oid.slice(0, 7)}</header>
+        <header className="modal-head">New tag {oid === 'HEAD' ? 'at HEAD' : `on ${oid.slice(0, 7)}`}</header>
         <input autoFocus placeholder="tag name" value={name} onChange={(e) => setName(e.target.value)} />
         <input
           placeholder="annotation message (optional → annotated)"

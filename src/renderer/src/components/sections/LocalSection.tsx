@@ -1,13 +1,12 @@
-// Left sidebar: the Working Directory node plus local/remote branches with
-// create/checkout/rename/delete, M2 ahead/behind chips, and drag-and-drop:
-// drop branch A onto branch B → Merge A into B / Rebase B onto A.
+// Local branches sidebar section: create / checkout / rename / delete, M2
+// ahead/behind chips, and drag-and-drop (drop branch A onto B → Merge / Rebase).
+// Ported from the old BranchList.
 
 import { useMemo, useState } from 'react'
 
-import { useRepo } from '../store'
-import { useStatus } from '../status-store'
-import { useGraph } from '../graph-store'
-import * as actions from '../actions'
+import { useRepo } from '../../store'
+import * as actions from '../../actions'
+import SidebarSection from '../SidebarSection'
 
 interface Drop {
   src: string
@@ -16,17 +15,9 @@ interface Drop {
   y: number
 }
 
-export default function BranchList(): React.JSX.Element {
+export default function LocalSection(): React.JSX.Element {
   const branches = useRepo((s) => s.branches)
-  const status = useStatus((s) => s.status)
-  const selectedOid = useGraph((s) => s.selectedOid)
-  const select = useGraph((s) => s.select)
-
   const local = useMemo(() => branches.filter((b) => !b.isRemote), [branches])
-  const remote = useMemo(() => branches.filter((b) => b.isRemote), [branches])
-
-  const changes =
-    (status?.staged.length ?? 0) + (status?.unstaged.length ?? 0) + (status?.untracked.length ?? 0)
 
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
@@ -47,23 +38,14 @@ export default function BranchList(): React.JSX.Element {
     setRenameValue('')
   }
 
+  const action = (
+    <button className="mini" title="New branch" onClick={() => setCreating((v) => !v)}>
+      ＋
+    </button>
+  )
+
   return (
-    <aside className="branches">
-      <button
-        className={`wd-node${selectedOid === null ? ' selected' : ''}`}
-        onClick={() => select(null)}
-      >
-        ● Working Directory
-        {changes > 0 && <span className="wd-count">{changes}</span>}
-      </button>
-
-      <header className="branches-head">
-        <h2>Branches</h2>
-        <button className="mini" title="New branch" onClick={() => setCreating((v) => !v)}>
-          ＋
-        </button>
-      </header>
-
+    <SidebarSection id="local" title="Local" count={local.length} action={action}>
       {creating && (
         <input
           className="branch-input"
@@ -136,11 +118,7 @@ export default function BranchList(): React.JSX.Element {
                   ✎
                 </button>
                 {!b.isHead && (
-                  <button
-                    className="mini danger"
-                    title="Delete"
-                    onClick={() => void actions.deleteBranch(b.name)}
-                  >
+                  <button className="mini danger" title="Delete" onClick={() => void actions.deleteBranch(b.name)}>
                     ✕
                   </button>
                 )}
@@ -151,26 +129,9 @@ export default function BranchList(): React.JSX.Element {
         {local.length === 0 && <li className="muted">none</li>}
       </ul>
 
-      {remote.length > 0 && (
-        <>
-          <h2>Remotes</h2>
-          <ul>
-            {remote.map((b) => (
-              <li key={b.fullName} className="branch remote">
-                <span className="branch-main">{b.name}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
       {drop && (
         <div className="drop-overlay" onMouseDown={() => setDrop(null)}>
-          <ul
-            className="drop-menu"
-            style={{ top: drop.y, left: drop.x }}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
+          <ul className="drop-menu" style={{ top: drop.y, left: drop.x }} onMouseDown={(e) => e.stopPropagation()}>
             <li
               onClick={() => {
                 void actions.mergeBranchInto(drop.src, drop.target)
@@ -190,6 +151,6 @@ export default function BranchList(): React.JSX.Element {
           </ul>
         </div>
       )}
-    </aside>
+    </SidebarSection>
   )
 }

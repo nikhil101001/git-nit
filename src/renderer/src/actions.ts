@@ -10,17 +10,19 @@ import { useGraph } from './graph-store'
 import { useStatus } from './status-store'
 import { useOp } from './op-store'
 import { useStash } from './stash-store'
+import { useTags } from './tag-store'
 import { useUi } from './ui-store'
 import { errMessage } from './errors'
 
-/** Refresh head/branches, graph, working status, op/undo state, and stashes. */
+/** Refresh head/branches, graph, working status, op/undo state, stashes, tags. */
 export async function refreshAll(): Promise<void> {
   await Promise.all([
     useRepo.getState().refreshHead(),
     useGraph.getState().reload(),
     useStatus.getState().refresh(),
     useOp.getState().refresh(),
-    useStash.getState().refresh()
+    useStash.getState().refresh(),
+    useTags.getState().refresh()
   ])
 }
 
