@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "A GitKraken-style Git GUI built on Electron + React + Zustand + Vite",
+  "author": "NIKHIL SHARMA <codebynikhil@gmail.com>",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
