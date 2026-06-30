@@ -262,6 +262,12 @@ export function registerIpc(): void {
       typeof content === 'string' ? content : ''
     )
   )
+  handle('repo:resolveConflictSide', async (_e, path, side) =>
+    requireEngine().resolveConflictSide(
+      requireString(path, 'path'),
+      side === 'theirs' ? 'theirs' : 'ours'
+    )
+  )
 
   // ── M2: interactive rebase ──
   handle('repo:rebasePlan', async (_e, onto) =>

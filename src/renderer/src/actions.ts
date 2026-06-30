@@ -122,6 +122,8 @@ export const opSkip = (): Promise<void> => mutate(() => ipc.opSkip())
 // ── M2: conflicts ──
 export const resolveConflict = (path: string, content: string): Promise<void> =>
   mutate(() => ipc.resolveConflict(path, content))
+export const resolveConflictSide = (path: string, side: 'ours' | 'theirs'): Promise<void> =>
+  mutate(() => ipc.resolveConflictSide(path, side))
 
 // ── M2: interactive rebase ──
 export const applyRebasePlan = (plan: RebasePlan): Promise<void> =>

@@ -266,6 +266,8 @@ export interface GitApi {
   // M2 — conflicts
   conflict(path: string): Promise<ConflictFile>
   resolveConflict(path: string, content: string): Promise<void>
+  /** Resolve a conflict by taking a whole side (M5.4 — for binary conflicts). */
+  resolveConflictSide(path: string, side: 'ours' | 'theirs'): Promise<void>
 
   // M2 — interactive rebase
   rebasePlan(onto: string): Promise<RebasePlan>
@@ -359,6 +361,8 @@ export interface ConflictFile {
   theirs: string | null
   /** The working-tree file with conflict markers, as the merge left it. */
   merged: string
+  /** True for a binary conflict — text panes are meaningless; pick a side. (M5.4) */
+  binary: boolean
 }
 
 /** Which multi-step operation (if any) is mid-flight — drives the banner + resume. */

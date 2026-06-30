@@ -348,11 +348,15 @@ export class CliEngine implements GitEngine {
         ? ['--all']
         : ['--branches', 'HEAD']
 
+    // Default (commit-date priority) order, NOT --topo-order: on a 100k-commit
+    // repo `--topo-order --all` forces a full-DAG load (~0.5s/page), while the
+    // default order streams the first page in ~10ms (M5.4 perf spike). Default
+    // order is chronological (GitKraken-like) and children still precede parents
+    // for normal histories, which is all `assignLanes` needs.
     let out: string
     try {
       out = await this.run([
         'log',
-        '--topo-order',
         `--skip=${offset}`,
         '-n',
         String(limit + 1),
@@ -716,12 +720,22 @@ export class CliEngine implements GitEngine {
     const side = (stage: number): Promise<string | null> =>
       this.run(['show', `:${stage}:${path}`]).then((s) => s).catch(() => null)
     const [base, ours, theirs] = await Promise.all([side(1), side(2), side(3)])
-    const merged = await readFile(join(this.cwd, path), 'utf8').catch(() => '')
-    return { path, base, ours, theirs, merged }
+    // Binary heuristic: a NUL byte in the working-tree file's head (git's own
+    // rule). Binary conflicts get no text panes — the UI offers "pick a side".
+    const buf = await readFile(join(this.cwd, path)).catch(() => Buffer.alloc(0))
+    const binary = buf.subarray(0, 8000).includes(0)
+    const merged = binary ? '' : buf.toString('utf8')
+    return { path, base, ours, theirs, merged, binary }
   }
 
   async resolveConflict(path: string, content: string): Promise<void> {
     await writeFile(join(this.cwd, path), content, 'utf8')
+    await this.run(['add', '--', path]).catch(asThrow)
+  }
+
+  async resolveConflictSide(path: string, side: 'ours' | 'theirs'): Promise<void> {
+    // Take the whole side (works for binary + delete/modify) then stage it.
+    await this.run(['checkout', `--${side}`, '--', path]).catch(asThrow)
     await this.run(['add', '--', path]).catch(asThrow)
   }
 

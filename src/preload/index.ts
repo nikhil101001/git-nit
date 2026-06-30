@@ -122,6 +122,7 @@ const api: GitApi = {
   // M2 — conflicts
   conflict: (path) => invoke<ConflictFile>('repo:conflict', path),
   resolveConflict: (path, content) => invoke<void>('repo:resolveConflict', path, content),
+  resolveConflictSide: (path, side) => invoke<void>('repo:resolveConflictSide', path, side),
 
   // M2 — interactive rebase
   rebasePlan: (onto) => invoke<RebasePlan>('repo:rebasePlan', onto),

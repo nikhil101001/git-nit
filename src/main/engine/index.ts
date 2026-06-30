@@ -98,6 +98,7 @@ export interface GitEngine {
   // ── M2 — conflicts ──
   conflict(path: string): Promise<ConflictFile>
   resolveConflict(path: string, content: string): Promise<void>
+  resolveConflictSide(path: string, side: 'ours' | 'theirs'): Promise<void>
 
   // ── M2 — interactive rebase (drives `git rebase -i` via GIT_SEQUENCE_EDITOR) ──
   /** A default pick-all plan for the range onto..HEAD, to seed the editor. */

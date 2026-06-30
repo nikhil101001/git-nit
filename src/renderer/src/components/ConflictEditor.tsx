@@ -49,6 +49,32 @@ export default function ConflictEditor(): React.JSX.Element | null {
     close()
   }
 
+  const takeSide = async (side: 'ours' | 'theirs'): Promise<void> => {
+    await actions.resolveConflictSide(path, side)
+    close()
+  }
+
+  // Binary conflict: text panes are meaningless — offer a whole-side choice.
+  if (cf.binary) {
+    return (
+      <div className="modal-overlay" onMouseDown={close}>
+        <div className="small-modal" onMouseDown={(e) => e.stopPropagation()}>
+          <header className="modal-head">Binary conflict — {path}</header>
+          <p className="muted" style={{ margin: '0 0.8rem' }}>
+            This file is binary and can&apos;t be merged line-by-line. Keep one side:
+          </p>
+          <footer className="modal-foot">
+            <button onClick={close}>Cancel</button>
+            <button onClick={() => void takeSide('ours')}>Use ours</button>
+            <button className="primary" onClick={() => void takeSide('theirs')}>
+              Use theirs
+            </button>
+          </footer>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="modal-overlay" onMouseDown={close}>
       <div className="conflict-modal" onMouseDown={(e) => e.stopPropagation()}>

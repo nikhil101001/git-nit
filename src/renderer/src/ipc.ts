@@ -111,6 +111,8 @@ export const opSkip = (): Promise<void> => window.api.opSkip()
 export const conflict = (path: string): Promise<ConflictFile> => window.api.conflict(path)
 export const resolveConflict = (path: string, content: string): Promise<void> =>
   window.api.resolveConflict(path, content)
+export const resolveConflictSide = (path: string, side: 'ours' | 'theirs'): Promise<void> =>
+  window.api.resolveConflictSide(path, side)
 
 // M2 — interactive rebase
 export const rebasePlan = (onto: string): Promise<RebasePlan> => window.api.rebasePlan(onto)
